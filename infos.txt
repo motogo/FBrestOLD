@@ -1,0 +1,60 @@
+http://localhost:1234/dokumento/standorte
+
+Insert mit postman
+
+POST Url:  http://seserver.ddnss.de:1234/dokumento/insert
+
+Im Body mit raw: { "ID": "123", "BEZ": "456", "GUELTIG": 1 }
+
+GET mit curl 
+
+curl -X GET -H "Content-Type: application/json" seserver.ddnss.de:1234/dokumento/standorte
+
+Insert mit Curl
+
+curl -X POST -H "Content-Type: application/json" -d "{\"id\":\"10\",\"bez\":\"12\",\"gueltig\":1}"  http://seserver.ddnss.de:1234/dokumento/insert
+
+curl -X GET -H "Content-Type: application/json" -d "{\"TABLE\":\"TSTANDORT\",\"CMD\":\"SELECT * FROM TSTANDORT WHERE BEZ LIKE '%T%'\", \"DATABASE\":\"D:/Data/DokuMents/DOKUMENTS30.FDB\",\"LOCATION\":\"LOCALHOST\",\"PORT\":3050}"  http://seserver.ddnss.de:4488/db/sqlrows
+
+curl -X GET -H "Content-Type: application/json" -d "{\"TABLE\":\"TSTANDORT\",\"CMD\":\"SELECT * FROM TSTANDORT WHERE BEZ LIKE '%T%'\", \"DATABASE\":\"SYSDBA:masterkey@localhost:3050/D:/Data/DokuMents/DOKUMENTS30.FDB\"}"  http://seserver.ddnss.de:4488/db/sqlrows
+
+
+
+curl -X GET -H "Content-Type: application/json" -d "{\"CMD\":\"SELECT NAME FROM TMEASHEAD\", \"DATABASE\":\"D:/Data/LAR/PPSDATAS304.FDB\",\"LOCATION\":\"LOCALHOST\",\"PORT\":3050}"  192.168.11.98:4488/db/sqlrows
+
+curl -X GET -H "Content-Type: application/json" -d "{\"DATABASE\":\"D:/Data/LAR/PPSDATAS304.FDB\",\"LOCATION\":\"192.168.11.98\",\"PORT\":3050}"  192.168.11.98:4488/db/test
+
+curl -X GET -H "Content-Type: application/json" -d "{\"DATABASE\":\"D:/Data/DokuMents/DOKUMENTS30.FDB\",\"LOCATION\":\"localhost\",\"PORT\":3050}"  localhost:4488/db/test?key={\"LOCATION\":\"localhost\",\"PORT\":3050}
+
+=========================================================================================================================================================
+SessionKey holen
+http://localhost:4488/api/getkey?h=Database:D:/Data/DokuMents/DOKUMENTS30.FDB
+http://localhost:4488/api/getkey?h=Database:D:/Data/DokuMents/DOKUMENTS30.FDB,Location:192.168.11.98,Port:3050,Password:masterkey,User:SYSDBA
+
+Returnvalue:
+{"Status":200,"Message":"Created UUID, duration 30m0s","Data":"-MNV7IIoFvuwd1J9Qr8i"}
+
+=========================================================================================================================================================
+
+Beispiel Select Anweiung mit sessionkey
+http://localhost:4488/db/sql/get/-MNV7IIoFvuwd1J9Qr8i?q=cmd:%27SELECT%27*%27FROM%27TSTANDORT%27where%27bez%27%20is%27not%27null
+
+go mod vendor
+
+RAS Key erezugen
+
+func main() {
+	reader := rand.Reader
+	bitSize := 2048
+
+	key, err := rsa.GenerateKey(reader, bitSize)
+	checkError(err)
+
+	publicKey := key.PublicKey
+
+	saveGobKey("private.key", key)
+	savePEMKey("private.pem", key)
+
+	saveGobKey("public.key", publicKey)
+	savePublicPEMKey("public.pem", publicKey)
+}

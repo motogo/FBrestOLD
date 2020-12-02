@@ -1,0 +1,39 @@
+
+
+
+
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>{{ .Appname}}</title>
+   </head>
+
+   <body>
+    <h1 style="color:red;">{{ .Appname}} {{ .Version}}</h1>
+    <h1>{{ .Copyright}}</h1>
+    <hr>
+      <p style = "font-family:georgia,garamond,serif;font-size:16px;font-style:italic;"></p>
+        <h2 style="color:blue;"> Session Key holen</h2>
+        <p>  Ein Session Key git für {{ .Duration}} und muss dann erneuert werden.</p>
+        <li> http://localhost:4488/api/getkey?h=Database:D:/Data/DokuMents/DOKUMENTS30.FDB</li>
+        <li> http://localhost:4488/api/getkey?h=Database:D:/Data/DokuMents/DOKUMENTS30.FDB,Location:192.168.11.98,Port:3050,Password:masterkey,User:SYSDBA</li>
+        <li> http://localhost:4488/api/getkey?Database=D:/Data/DokuMents/DOKUMENTS30.FDB</li>
+        <li> http://localhost:4488/api/getkey?Database=D:/Data/DokuMents/DOKUMENTS30.FDB&Location:192.168.11.98&Port:3050&Password:masterkey&User:SYSDBA</li>
+        
+        
+        <h3 style="color:blue;">Returnvalue: {"Status":200,"Message":"Created UUID, duration 30m0s","Data":"-MNV7IIoFvuwd1J9Qr8i"}</h3>
+        
+        <hr>
+        
+        <h2 style="color:blue;">SQL Anweisungen mit Sessionkey</h2>
+        <li>http://localhost:4488/db/sql/get/-MNV7IIoFvuwd1J9Qr8i?q=cmd:SELECT * FROM TSTANDORT</li>
+        <p>Der entsprechende SQL Befehl kann 'maskiert' werden indem das Maskierungszeichen der SQL Anweisung vorangestellt wird.</p>
+        <hr>
+        <p>Beispiel:  http://localhost:4488/db/sql/get/-MNV7IIoFvuwd1J9Qr8i?q=cmd:'SELECT'*'FROM'TSTANDORT</p>
+        <hr>
+        <h2 style="color:blue;">REST GET mit Fields,Filter,Order,Group</h2>
+        <li>http://localhost:4488/rest/get/-MNV7IIoFvuwd1J9Qr8i/TSTANDORT?q&fields=(id,bez)&order=(bez asc, id desc)&filter=(BEZ like 'T%')&group=(id,bez)</li>
+      
+   </body>
+
+</html>
