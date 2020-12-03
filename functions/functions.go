@@ -54,6 +54,22 @@ func RestponWithText(w http.ResponseWriter, code int) {
 	}
 }
 
+func RestponInfoBusyText(w http.ResponseWriter, code int) {
+	
+
+	profile := Profile{config.AppName,  config.Version,config.Copyright, _sessions.MaxDuration}
+	fp := path.Join("templates", "busy.html")
+	tmpl, err := template.ParseFiles(fp)
+	if err != nil {
+	  http.Error(w, err.Error(), http.StatusInternalServerError)
+	  return
+	}
+  
+	if err := tmpl.Execute(w, profile); err != nil {
+	  http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 
 func MakeSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
 	var sql string
@@ -111,11 +127,9 @@ func GetTableParamsFromBODY(r *http.Request , entitiesData *_struct.GetTABLEAttr
 }
 
 func GetParamsFromURL(r *http.Request , entitiesData *_struct.SQLAttributes) {
-	
+	const funcstr = "func GetParamsFromURL"
 	urlparams, ok := r.URL.Query()["q"]
-	log.WithFields(log.Fields{"URL params length": len(urlparams),	}).Debug("func GetParamsFromURL")
-
-
+	log.WithFields(log.Fields{"URL params length": len(urlparams),	}).Debug(funcstr)
 
     if ok && len(urlparams[0]) > 0 {
 		
@@ -125,8 +139,8 @@ func GetParamsFromURL(r *http.Request , entitiesData *_struct.SQLAttributes) {
 			
 			keyval :=  strings.SplitN(pars,":",2)
 			
-			log.WithFields(log.Fields{"Key": string(keyval[0]),	}).Debug("func GetParamsFromURL->found key")
-			log.WithFields(log.Fields{"Val": string(keyval[1]),	}).Debug("func GetParamsFromURL->found value")
+			log.WithFields(log.Fields{"Key": string(keyval[0]),	}).Debug(funcstr+"->found key")
+			log.WithFields(log.Fields{"Val": string(keyval[1]),	}).Debug(funcstr+"->found value")
 			
 			if(strings.EqualFold(string(keyval[0]), string("CMD"))) {
 				var cmd string =  string(keyval[1])
@@ -135,15 +149,15 @@ func GetParamsFromURL(r *http.Request , entitiesData *_struct.SQLAttributes) {
 					entitiesData.Sepfill = cmd[:1]
                     cmd = cmd[1:]
 					cmd = strings.ReplaceAll(cmd, entitiesData.Sepfill, " ")	
-					log.WithFields(log.Fields{"Sepfill": entitiesData.Sepfill,	}).Debug("func GetParamsFromURL->set key")				
+					log.WithFields(log.Fields{"Sepfill": entitiesData.Sepfill,	}).Debug(funcstr+"->set key")				
 			    }
 			    
-				log.WithFields(log.Fields{"Cmd": cmd,	}).Debug("func GetParamsFromURL->set key")
+				log.WithFields(log.Fields{"Cmd": cmd,	}).Debug(funcstr+"->set key")
 				entitiesData.Cmd = cmd
 			}
 			
 			if(strings.EqualFold(string(keyval[0]), string("INFO"))) {								
-				log.WithFields(log.Fields{"Info": string(keyval[1]),	}).Debug("func GetParamsFromURL->set key")
+				log.WithFields(log.Fields{"Info": string(keyval[1]),	}).Debug(funcstr+"->set key")
 				entitiesData.Info = string(keyval[1])
 			}
 		}		
@@ -153,22 +167,37 @@ func GetParamsFromURL(r *http.Request , entitiesData *_struct.SQLAttributes) {
 
 func GetSessionParamsFromURL(r *http.Request , entitiesData *_struct.DatabaseAttributes) {
 	
-	urlparams, ok := r.URL.Query()["h"]
-	if ok && len(urlparams[0]) > 0 {
-		GetSessionParamsFromURL2(r , entitiesData)
-		return
+	const funcstr = "func GetSessionParamsFromURL"
+	curlparamst, okt := r.URL.Query()["ftext"]
+	if okt && len(curlparamst[0]) > 0 {
+		var paramtype _struct.ParamFormatType = _struct.Text
+		var par = strings.SplitN(r.RequestURI,"?ftext=",2)
+		if(len(par) > 0) {
+			GetSessionParamsFromString(par[1] , paramtype, entitiesData)
+			return
+		}
 	}
 
+	curlparamsj, okj := r.URL.Query()["fjson"]
+	if okj && len(curlparamsj[0]) > 0 {
+		var paramtype _struct.ParamFormatType = _struct.Json
+		var par = strings.SplitN(r.RequestURI,"?fjson=",2)
+		if(len(par) > 0) {
+			GetSessionParamsFromString(par[1] , paramtype, entitiesData)
+			return
+		}
+	}
+	 
 	databaseparams, databaseok := r.URL.Query()["Database"]
 	locationparams, locationok := r.URL.Query()["Location"]
 	portparams, portok := r.URL.Query()["Port"]
 	userparams, userok := r.URL.Query()["User"]
 	passwordparams, passwordok := r.URL.Query()["Password"]
 	
-	log.WithFields(log.Fields{"URL params length": len(urlparams),	}).Debug("func GetSessionParamsFromURL")
+	
 	
 	if databaseok && len(databaseparams[0]) > 0 {
-		log.WithFields(log.Fields{"URL params length": len(databaseparams),	}).Debug("func GetSessionParamsFromURL")
+		log.WithFields(log.Fields{"URL params length": len(databaseparams),	}).Debug(funcstr)
 		urlparam := databaseparams[0]
 		if(urlparam[:1] == "(") {
 			entitiesData.Database = urlparam[1:len(urlparam)-1]
@@ -178,7 +207,7 @@ func GetSessionParamsFromURL(r *http.Request , entitiesData *_struct.DatabaseAtt
 	}
 
 	if locationok && len(locationparams[0]) > 0 {
-		log.WithFields(log.Fields{"URL params length": len(locationparams),	}).Debug("func GetSessionParamsFromURL")
+		log.WithFields(log.Fields{"URL params length": len(locationparams),	}).Debug(funcstr)
 		urlparam := locationparams[0]
 		if(urlparam[:1] == "(") {
 			entitiesData.Location = urlparam[1:len(urlparam)-1]
@@ -188,7 +217,7 @@ func GetSessionParamsFromURL(r *http.Request , entitiesData *_struct.DatabaseAtt
 	}
 
 	if portok && len(portparams[0]) > 0 {
-		log.WithFields(log.Fields{"URL params length": len(portparams),	}).Debug("func GetSessionParamsFromURL")
+		log.WithFields(log.Fields{"URL params length": len(portparams),	}).Debug(funcstr)
 		urlparam := portparams[0]
 		if(urlparam[:1] == "(") {
 			entitiesData.Port,_ = strconv.Atoi(urlparam[1:len(urlparam)-1])
@@ -198,7 +227,7 @@ func GetSessionParamsFromURL(r *http.Request , entitiesData *_struct.DatabaseAtt
 	}
 
 	if userok && len(userparams[0]) > 0 {
-		log.WithFields(log.Fields{"URL params length": len(userparams),	}).Debug("func GetSessionParamsFromURL")
+		log.WithFields(log.Fields{"URL params length": len(userparams),	}).Debug(funcstr)
 		urlparam := userparams[0]
 		if(urlparam[:1] == "(") {
 			entitiesData.User = urlparam[1:len(urlparam)-1]
@@ -208,7 +237,7 @@ func GetSessionParamsFromURL(r *http.Request , entitiesData *_struct.DatabaseAtt
 	}
 
 	if passwordok && len(passwordparams[0]) > 0 {
-		log.WithFields(log.Fields{"URL params length": len(passwordparams),	}).Debug("func GetSessionParamsFromURL")
+		log.WithFields(log.Fields{"URL params length": len(passwordparams),	}).Debug(funcstr)
 		urlparam := passwordparams[0]
 		if(urlparam[:1] == "(") {
 			entitiesData.Password = urlparam[1:len(urlparam)-1]
@@ -216,7 +245,7 @@ func GetSessionParamsFromURL(r *http.Request , entitiesData *_struct.DatabaseAtt
 			entitiesData.Password = urlparam
 		}
 	}
-    
+
 	return
 }
 
@@ -264,6 +293,93 @@ func GetSessionParamsFromURL2(r *http.Request , entitiesData *_struct.DatabaseAt
 	} 
 	return
 }
+//Ermittels Parameter für entitiesData aus stinng
+//Format: Database=D:/Data/DokuMents/DOKUMENTS30.FDB
+//        Location=Localhost
+
+func GetSessionParamsFromString(params string , paramtype _struct.ParamFormatType, entitiesData *_struct.DatabaseAttributes) {
+	
+	
+	var psplit  = "&"
+	var csplit  = "="
+	if(paramtype == _struct.Text) {
+		psplit = "&"
+		csplit = "="
+	} else if(paramtype == _struct.Json) {
+		psplit = ","
+		csplit = ":"
+	}
+
+	var par = strings.Split(params,psplit)
+
+	log.WithFields(log.Fields{"URL params length": len(par),	}).Debug("func GetSessionParamsFromString")
+	
+    if len(par) > 0 {
+		for _, pars := range par {
+
+			keyval :=  strings.SplitN(pars,csplit,2)
+			if(paramtype == _struct.Json) {
+				var st = keyval[0][:4]
+				if(st == "{%22") {
+					keyval[0] = keyval[0][4:]
+				}	
+
+				st = keyval[0][len(keyval[0])-3:]	
+				if(st == "%22") {
+					keyval[0] = keyval[0][:len(keyval[0])-3]
+				}
+
+				st = keyval[1][:3]
+				if(st == "%22") {
+					keyval[1] = keyval[1][3:]
+				}	
+
+				st = keyval[1][len(keyval[1])-4:]	
+				if(st == "%22}") {
+					keyval[1] = keyval[1][:len(keyval[1])-4]
+				}
+			}
+			// "x=y&k=n"
+			if(paramtype == _struct.Text) {
+				var st = keyval[0][:3]
+				if(st == "%22") {
+					keyval[0] = keyval[0][3:]
+				}	
+
+				st = keyval[1][len(keyval[1])-3:]	
+				if(st == "%22") {
+					keyval[1] = keyval[1][:len(keyval[1])-3]
+				}
+			}
+			
+			
+			log.WithFields(log.Fields{"Key": string(keyval[0]),	}).Debug("func GetSessionParamsFromString->found key")
+			log.WithFields(log.Fields{"Val": string(keyval[1]),	}).Debug("func GetSessionParamsFromString->found value")
+			
+			if(strings.EqualFold(string(keyval[0]), string("LOCATION"))) {								
+				log.WithFields(log.Fields{"Location": string(keyval[1]),	}).Debug("func GetSessionParamsFromString->set key")
+				entitiesData.Location = string(keyval[1])
+			}
+			if(strings.EqualFold(string(keyval[0]), string("DATABASE"))) {								
+				log.WithFields(log.Fields{"Database": string(keyval[1]),	}).Debug("func GetSessionParamsFromString->set key")
+				entitiesData.Database = string(keyval[1])
+			}
+			if(strings.EqualFold(string(keyval[0]), string("PORT"))) {								
+				log.WithFields(log.Fields{"Port": string(keyval[1]),	}).Debug("func GetSessionParamsFromString->set key")
+				entitiesData.Port,_ = strconv.Atoi(string(keyval[1]))
+			}
+			if(strings.EqualFold(string(keyval[0]), string("USER"))) {								
+				log.WithFields(log.Fields{"User": string(keyval[1]),	}).Debug("func GetSessionParamsFromString->set key")
+				entitiesData.User = string(keyval[1])
+			}
+			if(strings.EqualFold(string(keyval[0]), string("PASSWORD"))) {								
+				log.WithFields(log.Fields{"Password": "****",	}).Debug("func GetSessionParamsFromString->set key")
+				entitiesData.Password = string(keyval[1])
+			}
+		}		
+	} 
+	return
+}
 
 func KeyValid(response http.ResponseWriter, key string) (kv _sessions.Items) {
 	var Response _struct.ResponseData
@@ -282,7 +398,7 @@ func KeyValid(response http.ResponseWriter, key string) (kv _sessions.Items) {
 	if(difference > duration) {
 		//Zeit für Key abgelaufen
 		Response.Status = http.StatusForbidden
-		Response.Message = _sessions.SessionKeyStr+" "+kv.Key + " has expired after "+ strconv.Itoa(_sessions.MaxDuration) +" seconds"
+		Response.Message = _sessions.SessionKeyStr+" "+kv.Key + " has expired after "+ strconv.Itoa(_sessions.MaxDuration/1E9) +" seconds"
 		Response.Data = nil
 		var rep = _sessions.Repository() 
 	    rep.Delete(key)
@@ -290,7 +406,7 @@ func KeyValid(response http.ResponseWriter, key string) (kv _sessions.Items) {
 		kv.Valid = false
 		return kv
 	}
-	log.WithFields(log.Fields{"Remaining "+_sessions.SessionKeyStr+" duration (s)": duration,	}).Debug("func KeyValid")
+	log.WithFields(log.Fields{"Remaining "+_sessions.SessionKeyStr+" duration (s)": (duration-difference),	}).Debug("func KeyValid")
 	kv.Valid = true
 	return kv
 }

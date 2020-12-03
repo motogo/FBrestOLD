@@ -15,11 +15,11 @@ import (
 func main(){
 	customFormatter := new(log.TextFormatter)
 	customFormatter.ForceColors = true
-	customFormatter.TimestampFormat = "2020-01-02 15:04:05"
+	customFormatter.TimestampFormat = "2006-01-02T15:04:05Z07:00"
 	customFormatter.FullTimestamp = true	
 	log.SetFormatter(customFormatter)
 	argsWithProg := os.Args[1:]
-	if(len(argsWithProg) < 0){
+	if(len(argsWithProg) < 0) {
 	    log.Info(argsWithProg)
 	}
 	var port int = 4488
@@ -37,14 +37,12 @@ func main(){
 		}
 		if(strings.EqualFold(arg, "-H")||strings.EqualFold(arg, "--Help")) {				
 			log.Info(config.AppName+" " + config.Copyright);
-			
 			log.Info("PARAMS");
 			log.Info("-h, --Help          -> This Help");
 			log.Info("-p, --Port <port>   -> Port on wich the Server is listening for REST commands");
 			log.Info("-v, --Verbose <num> -> 0 = Log's only errors");
 			log.Info("                    -> 1 = Log's infos,errors (default)");
 			log.Info("                    -> 2 = Debugmode log's everything :-)");
-
 		}
 	}
     if(err != nil){

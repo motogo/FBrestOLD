@@ -45,4 +45,11 @@ type GetTABLEAttributes struct {
 	   Filter []DBFilterAttributes `json:"Filter"`
    }
 
+   type ParamFormatType string
+
+const(
+    Text ParamFormatType = "Text"
+    Json = "Json"
+)
+
    

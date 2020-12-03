@@ -3,11 +3,8 @@ package models
 import (
 	
 	"database/sql"
-	//"encoding/hex"
 	"null"
 	"encoding/json"
-	//guuid "github.com/google/uuid"
-	//"github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,18 +20,19 @@ type Db_init struct {
 
 
 func (model ModelGetData) GetSQLData(cmd string) (getStruct [] string, err error) {
-    log.WithFields(log.Fields{"CMD": cmd,	}).Debug("func GetSQLData")
+	const funcstr = "func GetSQLData"
+    log.WithFields(log.Fields{"Getting data": cmd,	}).Debug(funcstr)
 	
 	row, err := model.DB.Query(cmd)
 	if err != nil {				
-		log.WithFields(log.Fields{"Error": err.Error(),	}).Error("func GetSQLData, query command")
+		log.WithFields(log.Fields{"Error": err.Error(),	}).Error(funcstr+"->query command")
 		return  nil,err
 	} else {
 		
 		colNames, err := row.Columns()
 		
 		if err != nil {
-				log.WithFields(log.Fields{"Error": err.Error(),	}).Error("func GetSQLData, get colnames")
+				log.WithFields(log.Fields{"Error": err.Error(),	}).Error(funcstr+"->get colnames")
 			} else {
 		
 		}
@@ -50,15 +48,16 @@ func (model ModelGetData) GetSQLData(cmd string) (getStruct [] string, err error
 		for row.Next() {
 			err := row.Scan(readCols...)			
 			if err != nil {
-				log.WithFields(log.Fields{"Error": err.Error(),	}).Error("func GetSQLData, scan next row")
+				log.WithFields(log.Fields{"Error": err.Error(),	}).Error(funcstr+"->scan next row")
 			} else {						
 				pagesJson, err := json.Marshal(writeCols)
 				if err != nil {
-					log.WithFields(log.Fields{"Error": err.Error(),	}).Error("func GetSQLData, marshal to JSON")
+					log.WithFields(log.Fields{"Error": err.Error(),	}).Error(funcstr+"->marshal to JSON")
 				}
 				_isiStruct = append(_isiStruct,string(pagesJson))
 			}
 		}
+		log.WithFields(log.Fields{"Getting data done": cmd,	}).Debug(funcstr)
 		return _isiStruct, nil
 	}
 }
