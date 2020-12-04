@@ -40,30 +40,42 @@ func TestDBOpenClose(response http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func TestResponse(response http.ResponseWriter, r *http.Request) {
+
+
+func TestSQLResponse(response http.ResponseWriter, r *http.Request) {
+
+	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func TestSQLResponse")
 	
-	log.WithFields(log.Fields{"URL": r.URL,	}).Info("func TestResponse")
-	urlparams, _ := r.URL.Query()["q"]
 	var Response _struct.ResponseData
 	var entitiesData _struct.SQLAttributes
-	if len(urlparams) > 0 {
-		_functions.GetParamsFromURL(r , &entitiesData)		
-		Response.Status = http.StatusInternalServerError
-		Response.Message = "Response with params"
-		Response.Data = entitiesData.Info
-		
-		log.WithFields(log.Fields{"Info": entitiesData.Info,	}).Info("Response with params done")	
-		_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
 	
-	} else {
-		
-		Response.Status = http.StatusInternalServerError
-		Response.Message = "Response without params"
-		Response.Data = "none"		
-		log.WithFields(log.Fields{"Info": entitiesData.Info,	}).Info("Response without params done")	
-		_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
-	}
-    
+	_functions.GetSQLParamsFromURL(r , &entitiesData)				
+	_functions.GetParamsFromBODY(r , &entitiesData)	
+	_functions.OutParameters(entitiesData) 	
+	
+	Response.Status = http.StatusOK
+	Response.Message = "Test SQL response"
+	Response.Data = entitiesData.Cmd
+	_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
+	
+}
+
+func TestTABLEResponse(response http.ResponseWriter, r *http.Request) {
+
+	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func TestSQLResponse")
+	
+	var Response _struct.ResponseData
+	var entitiesData _struct.GetTABLEAttributes
+	
+	_functions.GetTableParamsFromURL(r , &entitiesData)				
+	//_functions.GetParamsFromBODY(r , &entitiesData)	
+	//_functions.OutParameters(entitiesData) 	
+	
+	Response.Status = http.StatusOK
+	Response.Message = "Test table response"
+	Response.Data = entitiesData
+	_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
+	
 }
 
 func GetSessionKey(response http.ResponseWriter, r *http.Request) {
@@ -109,6 +121,29 @@ func DeleteSessionKey(response http.ResponseWriter, r *http.Request) {
 			
 }
 
+func SetSessionKey(response http.ResponseWriter, r *http.Request) {
+	
+	var dbData _struct.DatabaseAttributes
+
+	dbData.Location = "localhost"	
+	dbData.Port = 3050
+	dbData.Password = "masterkey"
+	dbData.User = "SYSDBA"
+
+	var key = _functions.GetPathSliceFromURL(r,0)
+	_functions.GetSessionParamsFromURL(r , &dbData)		
+	var Response _struct.ResponseData								
+	var rep = _sessions.Repository()
+	
+	var cmd string = config.MakeConnectionStringFromStruct(dbData)
+	rep.Add(key,cmd)
+	Response.Status = http.StatusOK
+	Response.Message = "Set " + _sessions.SessionKeyStr
+	Response.Data =  key
+	_functions.RestponWithJson(response, http.StatusOK, Response)
+			
+}
+
 // GetSQLData returns result rows in json format from an given sql statement.
 // The attribute can be given by body or url of statement.
 // Following attributes are possible:
@@ -134,27 +169,27 @@ func GetSQLData(response http.ResponseWriter, r *http.Request) {
 	var entitiesData _struct.SQLAttributes
 	
 	
-	_functions.GetParamsFromURL(r , &entitiesData)				
+	_functions.GetSQLParamsFromURL(r , &entitiesData)				
 	_functions.GetParamsFromBODY(r , &entitiesData)	
 	_functions.OutParameters(entitiesData) 	
 	db, err := config.ConnLocationWithSession(kv)	
 	
 	if err != nil {
 		Response.Status = http.StatusInternalServerError
-		Response.Message = err.Error()
-		Response.Data = nil
+		Response.Message = entitiesData.Info
+		Response.Data = err.Error()
 		_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
 		_models := models.ModelGetData{DB:db}
 		IsiData, err2 := _models.GetSQLData(entitiesData.Cmd)
 		if err2 != nil {
 			Response.Status = http.StatusInternalServerError
-			Response.Message = err2.Error()
-			Response.Data = nil
+			Response.Message = entitiesData.Info
+			Response.Data = err2.Error()
 			_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
 			Response.Status = http.StatusOK
-			Response.Message = "Successed"
+			Response.Message = entitiesData.Info
 			Response.Data = &IsiData
 			_functions.RestponWithJson(response, http.StatusOK, Response)
 		}
@@ -178,20 +213,17 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 	entitiesData.Table = table
 	var Response _struct.ResponseData
 
-	
-	
 	_functions.GetTableParamsFromURL(r , &entitiesData)		
-	
 	_functions.GetTableParamsFromBODY(r , &entitiesData)	
 	_functions.OutTableParameters(entitiesData) 	
 	
-if(len(entitiesData.Table) < 1) {
-	Response.Status = http.StatusInternalServerError
-	Response.Message = "No Table given"
-	Response.Data = nil
-    _functions.RestponWithJson(response, http.StatusInternalServerError, Response)
-	return
-}
+	if(len(entitiesData.Table) < 1) {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = entitiesData.Info
+		Response.Data = "No Table given"
+		_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
 
 	db, err := config.ConnLocationWithSession(kv)
 	
@@ -207,12 +239,12 @@ if(len(entitiesData.Table) < 1) {
 		IsiData, err2 := _models.GetSQLData(cmd)
 		if err2 != nil {
 			Response.Status = http.StatusInternalServerError
-			Response.Message = err2.Error()
-			Response.Data = nil
+			Response.Message = entitiesData.Info
+			Response.Data = err2.Error()
 			_functions.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
 			Response.Status = http.StatusOK
-			Response.Message = "Successed"
+			Response.Message = entitiesData.Info
 			Response.Data = &IsiData
 			_functions.RestponWithJson(response, http.StatusOK, Response)
 		}

@@ -68,13 +68,15 @@ func main(){
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/rest/get/{key}/{table}",apis.GetTableData).Methods("GET")
-	//router.HandleFunc("/rest/{key}/{table}/{field}",apis.GetTableData).Methods("GET")
+	router.HandleFunc("/rest/get/{key}/{table}",apis.GetTableData).Methods("GET")	
+	
 	router.HandleFunc("/db/sql/get/{key}",apis.GetSQLData).Methods("GET")
 	router.HandleFunc("/db/test/{key}",apis.TestDBOpenClose).Methods("GET")
-	router.HandleFunc("/api/test/{key}",apis.TestResponse).Methods("GET")
-	router.HandleFunc("/api/getkey",apis.GetSessionKey).Methods("GET")
-	router.HandleFunc("/api/deletekey/{key}",apis.DeleteSessionKey).Methods("GET")
+
+	router.HandleFunc("/api/sql/test",apis.TestSQLResponse).Methods("GET")	
+	router.HandleFunc("/api/key/get",apis.GetSessionKey).Methods("GET")
+	router.HandleFunc("/api/key/delete/{key}",apis.DeleteSessionKey).Methods("GET")
+	router.HandleFunc("/api/key/set/{key}",apis.SetSessionKey).Methods("GET")
 	router.HandleFunc("/api/help",apis.GetHelp).Methods("GET")
 	
 	log.Info(config.AppName+" " + config.Copyright);

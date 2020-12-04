@@ -6,28 +6,46 @@ import ("database/sql"
 		//"null"
 		_"github.com/nakagami/firebirdsql"
 		log "github.com/sirupsen/logrus"
+		_struct "fbrest/Base/struct"
 )
 
+const (
+	DefaultUser string = "SYSDBA"
+	DefaultPassword string = "masterkey"
+	DefaultPort int = 3050
+	DefaultLocation = "localhost"
+)
 
+func MakeConnectionStringFromStruct(datas _struct.DatabaseAttributes) (cmd string) {
+	
+	cmd = MakeConnectionString(datas.Port,datas.Location, datas.Database , datas.User , datas.Password)	
+	return 
+}
 
-func ConnLocation(port int,location string, filename string, user string, password string) (db *sql.DB, err error) {
-   
-    if(port < 1){
-	    port = 3050
+func MakeConnectionString(port int,location string, filename string, user string, password string) (cmd string) {
+	if(port < 1){
+	    port = DefaultPort
 	}
 	if(len(location)) < 1{
-	    location = "localhost"
+	    location = DefaultLocation
 	}
 
 	if(len(user) < 1) {
-		user = "SYSDBA"
+		user = DefaultUser
 	}
 
 	if(len(password) < 1) {
-		password = "masterkey"
+		password = DefaultPassword
 	}
 
-    var connstr = string(user+":"+password+"@"+location+":"+strconv.Itoa(port)+"/"+filename)	
+	cmd = string(user+":"+password+"@"+location+":"+strconv.Itoa(port)+"/"+filename)	
+	return
+}
+
+func ConnLocation(port int,location string, filename string, user string, password string) (db *sql.DB, err error) {
+   
+
+    var connstr = MakeConnectionString(port,location, filename , user , password)	
 	return ConnLocationWithString(connstr)
 }
 
@@ -64,7 +82,6 @@ func TestConnLocation(connstr string) (err error) {
 	}
 
 	err = db.Ping(); 
-	
 	return
 }
 

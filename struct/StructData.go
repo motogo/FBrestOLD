@@ -1,10 +1,5 @@
 package _struct
 
-//import "time"
-
-
-
-
 type SQLAttributes struct {
  
  Cmd string  `json:"CMD"`
@@ -21,6 +16,8 @@ type GetTABLEAttributes struct {
 	Filter string `json:"filter"` 
 	OrderBy string `json:"orderby"` 
 	GroupBy string `json:"groupby"` 	
+	First int `json:"first"` 	
+	Skip int `json:"skip"` 	
 	Sepfill string  `json:"sepfill"`
 	Info string `json:"info"`
 	Debug string `json:"debug"`
@@ -45,11 +42,17 @@ type GetTABLEAttributes struct {
 	   Filter []DBFilterAttributes `json:"Filter"`
    }
 
-   type ParamFormatType string
+type ParamFormatType string
+type SepFillType string
 
 const(
     Text ParamFormatType = "Text"
     Json = "Json"
+)
+
+const(
+    SepFillApos SepFillType = "'"
+    SepFillMinus = "-"
 )
 
    
