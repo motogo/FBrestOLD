@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"fbrest/Base/config"
-	
+	_permissions "fbrest/Base/permissions"
 )
 
 func main(){
@@ -66,17 +66,19 @@ func main(){
 		log.SetLevel(log.ErrorLevel)	
 	}
 
+	//_permissions.WritePermissions()
+	
+	_permissions.ReadPermissions()
+
 	router := mux.NewRouter()
 
-	router.HandleFunc("/rest/get/{key}/{table}",apis.GetTableData).Methods("GET")	
-	
-	router.HandleFunc("/db/sql/get/{key}",apis.GetSQLData).Methods("GET")
-	router.HandleFunc("/db/test/{key}",apis.TestDBOpenClose).Methods("GET")
-
+	router.HandleFunc("/rest/get/{token}/{table}",apis.GetTableData).Methods("GET")	
+	router.HandleFunc("/db/sql/get/{token}",apis.GetSQLData).Methods("GET")
+	router.HandleFunc("/db/test/{token}",apis.TestDBOpenClose).Methods("GET")
 	router.HandleFunc("/api/sql/test",apis.TestSQLResponse).Methods("GET")	
-	router.HandleFunc("/api/key/get",apis.GetSessionKey).Methods("GET")
-	router.HandleFunc("/api/key/delete/{key}",apis.DeleteSessionKey).Methods("GET")
-	router.HandleFunc("/api/key/set/{key}",apis.SetSessionKey).Methods("GET")
+	router.HandleFunc("/api/token/get",apis.GetSessionKey).Methods("GET")
+	router.HandleFunc("/api/token/delete/{token}",apis.DeleteSessionKey).Methods("GET")
+	router.HandleFunc("/api/token/set/{token}",apis.SetSessionKey).Methods("GET")
 	router.HandleFunc("/api/help",apis.GetHelp).Methods("GET")
 	
 	log.Info(config.AppName+" " + config.Copyright);
@@ -88,5 +90,4 @@ func main(){
 	if err != nil {		
 		log.WithFields(log.Fields{"Error": err.Error(),	}).Error("func main()")
 	}
-
 }

@@ -60,7 +60,7 @@ func ConnLocationWithString(connectionstring string) (db *sql.DB, err error) {
 }
 func ConnLocationWithSession(kv _sessions.Items) (db *sql.DB, err error) {
    
-	log.WithFields(log.Fields{"Open database:": kv.Key,	}).Info("func ConnLocationWithSession")    
+	log.WithFields(log.Fields{"Open database:": kv.Token,	}).Info("func ConnLocationWithSession")    
 	db, err = sql.Open("firebirdsql", kv.Value) 
 	if err != nil {		
 		log.WithFields(log.Fields{"Open database, Error": err.Error(),	}).Error("func ConnLocationWithSession")

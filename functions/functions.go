@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	_struct "fbrest/Base/struct"		
 	_sessions "fbrest/Base/sessions"
+	//_httpstuff "fbrest/Base/httpstuff"
 	"net/http"
 	"net/url"
 	"html/template"	
@@ -16,21 +17,6 @@ import (
 	"time"
 )
 
-
-func SetupResponse(w *http.ResponseWriter, req *http.Request) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-    (*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-    (*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-}
-
-
-
-func RestponWithJson(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
-}
 
 type Profile struct {
 	Appname    string
@@ -184,7 +170,7 @@ func GetSQLParamsFromURL(r *http.Request , entitiesData *_struct.SQLAttributes) 
 		log.WithFields(log.Fields{"Info": info,	}).Debug(funcstr+"->set key")
 		entitiesData.Info = info
 	}
-	
+
 	return
 }
 
@@ -448,7 +434,6 @@ func GetTABLEParamsFromString(params string , paramtype _struct.ParamFormatType,
 					entitiesData.First,_ = strconv.Atoi(lm[0])
 					entitiesData.Skip,_ = strconv.Atoi(lm[1])		
 				}
-				//entitiesData.First,_ = strconv.Atoi(string(keyval[1]))
 			}
 		}		
 	} 
@@ -527,35 +512,6 @@ func GetSQLParamsFromString(params string , paramtype _struct.ParamFormatType, e
 	return
 }
 
-func KeyValid(response http.ResponseWriter, key string) (kv _sessions.Items) {
-	var Response _struct.ResponseData
-	kv  = GetSessionKeyFromRepository(key)	
-	if(len(kv.Value) < 1) {
-		Response.Status = http.StatusForbidden
-		Response.Message = "No valid database connection found by "+_sessions.SessionKeyStr+" "+kv.Key
-		Response.Data = nil
-		RestponWithJson(response, http.StatusInternalServerError, Response)
-		kv.Valid = false
-		return kv
-	}
-	var duration time.Duration = kv.Duration
-	var end = time.Now();
-	difference := end.Sub(kv.Start)
-	if(difference > duration) {
-		//Zeit für Key abgelaufen
-		Response.Status = http.StatusForbidden
-		Response.Message = _sessions.SessionKeyStr+" "+kv.Key + " has expired after "+ strconv.Itoa(_sessions.MaxDuration/1E9) +" seconds"
-		Response.Data = nil
-		var rep = _sessions.Repository() 
-	    rep.Delete(key)
-		RestponWithJson(response, http.StatusInternalServerError, Response)
-		kv.Valid = false
-		return kv
-	}
-	log.WithFields(log.Fields{"Remaining "+_sessions.SessionKeyStr+" duration (s)": (duration-difference),	}).Debug("func KeyValid")
-	kv.Valid = true
-	return kv
-}
 
 //Returns the last-nLeft slice from URL
 //e.g. when nLeft == 0 returns the last slice
@@ -567,17 +523,8 @@ func GetPathSliceFromURL(r *http.Request, nLeft int) (key string) {
 	urlstr = keyval[0]
 	t2 :=  strings.Split(urlstr,"/")
 	key = t2[len(t2)-1-nLeft]
-	log.WithFields(log.Fields{_sessions.SessionKeyStr: key,	}).Debug("func GetSessionKeyFromURL")	
+	log.WithFields(log.Fields{_sessions.SessionTokenStr: key,	}).Debug("func GetPathSliceFromURL")	
 	return key
-}
-
-func GetSessionKeyFromRepository(key string) (kval _sessions.Items) {
-	
-	log.WithFields(log.Fields{_sessions.SessionKeyStr: key,	}).Debug("func GetSessionKeyFromRepository")	
-	var rep = _sessions.Repository() 
-	var result,_ = rep.Get(key)	 
-	result.Key = key
-	return result 
 }
 
 func GetTableParamsFromURL(r *http.Request , entitiesData *_struct.GetTABLEAttributes) {

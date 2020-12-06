@@ -1,0 +1,14 @@
+<Permissions>
+ <Permission>
+  <Key>SYSDBA</Key>
+  <Type>All</Type>
+ </Permission>
+ <Permission>
+  <Key>456</Key>
+  <Type>None</Type>
+ </Permission>
+ <Permission>
+  <Key>789</Key>
+  <Type>Read</Type>
+ </Permission>
+</Permissions>

@@ -29,8 +29,7 @@ type GetTABLEAttributes struct {
 	Database string  `json:"database"`
 	Port int  `json:"port"`	
 	Password string `json:"password"`
-	User string `json:"user"`
-	
+	User string `json:"user"`	
    }
 
    type DBFilterAttributes struct {
