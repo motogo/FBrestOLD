@@ -9,10 +9,8 @@ import (
 	"strconv"
 	"net/http"
 	_struct "fbrest/Base/struct"		
+	_apperrors "fbrest/Base/apperrors"
 )
-
-
-
 
 const MaxDuration = 30*60*1E9  //ns
 const SessionTokenStr = "session token"
@@ -24,7 +22,7 @@ type Items struct {
 	Start time.Time  `json:"Time"` 
 	Duration time.Duration  `json:"Duration"` 
 	Valid bool `json:"Valid"` 
-   }
+}
 
 type repository struct {
 	items map[string]Items
@@ -57,8 +55,7 @@ func (r *repository) Get(token string) (Items, error) {
 	defer r.mu.RUnlock()
 	item, ok := r.items[token]
 	if !ok {
-		
-		var err error
+		var err error = _apperrors.ErrPermissionItemNotFound
 		log.WithFields(log.Fields{SessionTokenStr+" not found": token,	}).Debug("func Get "+SessionTokenStr)	
 		return item,err
 	}
@@ -104,22 +101,19 @@ func TokenValid(response http.ResponseWriter, key string) (kv Items) {
 	kv.Valid = true
 	return kv
 }
-
-
-
 	
-	var (
+var (
 		r *repository
-	)
+)
 	
-	func Repository() *repository {
-		if r == nil {
-			r = &repository {
-				items: make(map[string]Items),
-			}
+func Repository() *repository {
+	if r == nil {
+		r = &repository {
+			items: make(map[string]Items),
 		}
-		return r
 	}
+	return r
+}
 
 
 

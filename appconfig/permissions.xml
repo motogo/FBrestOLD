@@ -1,0 +1,23 @@
+<Permissions>
+ <Permission>
+  <userkey>superuser</userkey>
+  <userpassword>su</userpassword>
+  <dbuser>SYSDBA</dbuser>
+  <dbpassword>masterkey</dbpassword>
+  <type>9</type>
+ </Permission>
+ <Permission>
+  <userkey>456</userkey>
+  <userpassword></userpassword>
+  <dbuser></dbuser>
+  <dbpassword></dbpassword>
+  <type>0</type>
+ </Permission>
+ <Permission>
+  <userkey>789</userkey>
+  <userpassword></userpassword>
+  <dbuser></dbuser>
+  <dbpassword></dbpassword>
+  <type>1</type>
+ </Permission>
+</Permissions>

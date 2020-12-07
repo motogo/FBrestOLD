@@ -3,7 +3,6 @@ package config
 import ("database/sql"
 		"strconv"
 		_sessions "fbrest/Base/sessions"
-		//"null"
 		_"github.com/nakagami/firebirdsql"
 		log "github.com/sirupsen/logrus"
 		_struct "fbrest/Base/struct"

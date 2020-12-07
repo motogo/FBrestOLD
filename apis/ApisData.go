@@ -9,6 +9,7 @@ import (
 	_sessions "fbrest/Base/sessions"
 	_permissions "fbrest/Base/permissions"
 	_httpstuff "fbrest/Base/httpstuff"
+	_apperrors "fbrest/Base/apperrors"
 	"net/http"
 	log "github.com/sirupsen/logrus"	
 	bguuid "github.com/kjk/betterguid"
@@ -17,7 +18,7 @@ import (
 func TestDBOpenClose(response http.ResponseWriter, r *http.Request) {
 
 	log.WithFields(log.Fields{"URL": r.URL,	}).Info("func TestDBOpenClose")
-	var key = _functions.GetPathSliceFromURL(r,0)	
+	var key = _functions.GetLeftPathSliceFromURL(r,0)	
 	var kv  = _sessions.TokenValid(response, key)
 	if(!kv.Valid) {
 		return
@@ -92,12 +93,21 @@ func GetSessionKey(response http.ResponseWriter, r *http.Request) {
 	_functions.GetSessionParamsFromURL(r , &dbData)		
 
 	id := bguuid.New()				
-	var connstr = string(dbData.User+":"+dbData.Password+"@"+dbData.Location+":"+strconv.Itoa(dbData.Port)+"/"+dbData.Database)			
+		
 	var rep = _sessions.Repository() 
-	var perm = _permissions.GetPermissionFromRepository(dbData.User)
+	var perm,errperm = _permissions.GetPermissionFromRepository(dbData.User,dbData.Password)
+	if(errperm != nil) {
+		Response.Status  = http.StatusNotFound
+		Response.Message = "No permissions !!!"
+		Response.Data    =  errperm.Error()
+		_httpstuff.RestponWithJson(response, http.StatusOK, Response)
+		return
+	}
+	var connstr = string(perm.DBUser+":"+perm.DBPassword+"@"+dbData.Location+":"+strconv.Itoa(dbData.Port)+"/"+dbData.Database)		
+
 	var itm = rep.Add(string(id),perm.Type,connstr)
 	Response.Status = http.StatusOK
-	Response.Message = "Created UUID, permissions:"+string(perm.Type)+", duration:"+ itm.Duration.String()
+	Response.Message = "Created UUID, permissions:"+strconv.Itoa(int(perm.Type)) +", duration:"+ itm.Duration.String()
 	Response.Data =  string(id)
 	_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 	
@@ -108,15 +118,14 @@ func GetHelp(response http.ResponseWriter, r *http.Request) {
 }
 func DeleteSessionKey(response http.ResponseWriter, r *http.Request) {
 	
-	var key = _functions.GetPathSliceFromURL(r,0)
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
 	var Response _struct.ResponseData								
 	var rep = _sessions.Repository() 
 	rep.Delete(key)
 	Response.Status = http.StatusOK
 	Response.Message = "Deleted " + _sessions.SessionTokenStr
 	Response.Data =  key
-	_httpstuff.RestponWithJson(response, http.StatusOK, Response)
-			
+	_httpstuff.RestponWithJson(response, http.StatusOK, Response)			
 }
 
 func SetSessionKey(response http.ResponseWriter, r *http.Request) {
@@ -126,15 +135,22 @@ func SetSessionKey(response http.ResponseWriter, r *http.Request) {
 	dbData.Location = "localhost"	
 	dbData.Port = 3050
 	dbData.Password = "masterkey"
-	dbData.User = "SYSDBA"
+	dbData.User     = "guest"
 
-	var key = _functions.GetPathSliceFromURL(r,0)
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
 	_functions.GetSessionParamsFromURL(r , &dbData)		
 	var Response _struct.ResponseData								
 	var rep = _sessions.Repository()
 	
 	var cmd string = config.MakeConnectionStringFromStruct(dbData)
-	var perm = _permissions.GetPermissionFromRepository(dbData.User)
+	var perm,errperm = _permissions.GetPermissionFromRepository(dbData.User,dbData.Password )
+	if(errperm != nil) {
+		Response.Status = http.StatusOK
+		Response.Message = "No permission !!!"
+		Response.Data =  errperm
+		_httpstuff.RestponWithJson(response, http.StatusOK, Response)
+		return
+	}
 	rep.Add(key,perm.Type,cmd)
 	
 	Response.Status = http.StatusOK
@@ -158,7 +174,7 @@ func GetSQLData(response http.ResponseWriter, r *http.Request) {
 
 	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetSQLData")
 	
-	var key = _functions.GetPathSliceFromURL(r,0)
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
 	var kv  = _sessions.TokenValid(response, key)
 	if(!kv.Valid) {
 		return
@@ -199,16 +215,24 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 
 	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetTableData")
 	
-	var key = _functions.GetPathSliceFromURL(r,1)
+	var key = _functions.GetLeftPathSliceFromURL(r,1)
 	var kv  = _sessions.TokenValid(response, key)
 	if(!kv.Valid) {
 		return
 	}
+	var Response _struct.ResponseData
+	if(kv.Permission < _permissions.Read) {
+		Response.Status = http.StatusNotFound
+		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
+		Response.Data = key
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
 
 	var entitiesData _struct.GetTABLEAttributes
-	var table = _functions.GetPathSliceFromURL(r,0)
+	var table = _functions.GetRightPathSliceFromURL(r,0)
 	entitiesData.Table = table
-	var Response _struct.ResponseData
+	
 
 	_functions.GetTableParamsFromURL(r , &entitiesData)		
 	_functions.GetTableParamsFromBODY(r , &entitiesData)	
@@ -231,9 +255,137 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
 		_models := models.ModelGetData{DB:db}
-		var cmd string = _functions.MakeSQL(entitiesData)
+		var cmd string = _functions.MakeSelectSQL(entitiesData)
 		
 		IsiData, err2 := _models.GetSQLData(cmd)
+		if err2 != nil {
+			Response.Status = http.StatusInternalServerError
+			Response.Message = entitiesData.Info
+			Response.Data = err2.Error()
+			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		} else {
+			Response.Status = http.StatusOK
+			Response.Message = entitiesData.Info
+			Response.Data = &IsiData
+			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
+		}
+	}
+}
+
+func DeleteTableData(response http.ResponseWriter, r *http.Request) {
+
+
+	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetTableData")
+	
+	var key = _functions.GetLeftPathSliceFromURL(r,1)
+	var kv  = _sessions.TokenValid(response, key)
+	if(!kv.Valid) {
+		return
+	}
+	var Response _struct.ResponseData
+	if(kv.Permission < _permissions.Read) {
+		Response.Status = http.StatusNotFound
+		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
+		Response.Data = key
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	var entitiesData _struct.GetTABLEAttributes
+	var table = _functions.GetRightPathSliceFromURL(r,0)
+	
+	entitiesData.Table = table
+	
+	_functions.OutTableParameters(entitiesData) 	
+	
+	if(len(entitiesData.Table) < 1) {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = entitiesData.Info
+		Response.Data = "No Table given"
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	db, err := config.ConnLocationWithSession(kv)
+	
+	if err != nil {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = err.Error()
+		Response.Data = nil
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+	} else {
+		_models := models.ModelGetData{DB:db}
+		var cmd string = _functions.MakeDeleteTableSQL(entitiesData)
+		
+		IsiData, err2 := _models.RunSQLData(cmd)
+		if err2 != nil {
+			Response.Status = http.StatusInternalServerError
+			Response.Message = entitiesData.Info
+			Response.Data = err2.Error()
+			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		} else {
+			Response.Status = http.StatusOK
+			Response.Message = entitiesData.Info
+			Response.Data = &IsiData
+			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
+		}
+	}
+}
+
+func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
+
+
+	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetTableData")
+	
+	var key = _functions.GetLeftPathSliceFromURL(r,1)
+	var kv  = _sessions.TokenValid(response, key)
+	if(!kv.Valid) {
+		return
+	}
+	var Response _struct.ResponseData
+	if(kv.Permission < _permissions.Read) {
+		Response.Status = http.StatusNotFound
+		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
+		Response.Data = key
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	var entitiesData _struct.GetTABLEAttributes
+	var table = _functions.GetRightPathSliceFromURL(r,1)
+	var field = _functions.GetRightPathSliceFromURL(r,0)
+	entitiesData.Table = table
+	entitiesData.Fields = field
+	_functions.OutTableParameters(entitiesData) 	
+	
+	if(len(entitiesData.Table) < 1) {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = entitiesData.Info
+		Response.Data = "No Table given"
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	if(len(entitiesData.Fields) < 1) {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = entitiesData.Info
+		Response.Data = "No Field given"
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	db, err := config.ConnLocationWithSession(kv)
+	
+	if err != nil {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = err.Error()
+		Response.Data = nil
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+	} else {
+		_models := models.ModelGetData{DB:db}
+		var cmd string = _functions.MakeDeleteTableFieldSQL(entitiesData)
+		
+		IsiData, err2 := _models.RunSQLData(cmd)
 		if err2 != nil {
 			Response.Status = http.StatusInternalServerError
 			Response.Message = entitiesData.Info

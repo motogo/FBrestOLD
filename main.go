@@ -66,22 +66,25 @@ func main(){
 		log.SetLevel(log.ErrorLevel)	
 	}
 
-	//_permissions.WritePermissions()
+	//_permissions.WritePermissions("appconfig/permissions.xml")
 	
-	_permissions.ReadPermissions()
+	_permissions.ReadPermissions("appconfig/permissions.xml")
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/rest/get/{token}/{table}",apis.GetTableData).Methods("GET")	
-	router.HandleFunc("/db/sql/get/{token}",apis.GetSQLData).Methods("GET")
-	router.HandleFunc("/db/test/{token}",apis.TestDBOpenClose).Methods("GET")
+	router.HandleFunc("/{token}/rest/get/{table}",apis.GetTableData).Methods("GET")	
+	router.HandleFunc("/{token}/rest/delete/{table}",apis.DeleteTableData).Methods("DELETE")	
+	router.HandleFunc("/{token}/rest/delete/{table}/{field}",apis.DeleteTableFieldData).Methods("DELETE")	
+	router.HandleFunc("/{token}/db/sql/get",apis.GetSQLData).Methods("GET")
+	router.HandleFunc("/{token}/db/test",apis.TestDBOpenClose).Methods("GET")
+
 	router.HandleFunc("/api/sql/test",apis.TestSQLResponse).Methods("GET")	
 	router.HandleFunc("/api/token/get",apis.GetSessionKey).Methods("GET")
 	router.HandleFunc("/api/token/delete/{token}",apis.DeleteSessionKey).Methods("GET")
 	router.HandleFunc("/api/token/set/{token}",apis.SetSessionKey).Methods("GET")
 	router.HandleFunc("/api/help",apis.GetHelp).Methods("GET")
 	
-	log.Info(config.AppName+" " + config.Copyright);
+	log.Info(config.AppName + " " + config.Copyright);
 	log.Info(" ")
 	log.Info("Version:"+config.Version);
 	log.Info("Server listening for Firebird REST at port "+strconv.Itoa(port)+" ...")

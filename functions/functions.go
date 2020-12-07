@@ -58,7 +58,7 @@ func RestponInfoBusyText(w http.ResponseWriter, code int) {
 	}
 }
 
-func MakeSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
+func MakeSelectSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
 	var sql string
 	if(len(entitiesData.Fields) < 1) {
 		entitiesData.Fields = "*"
@@ -85,6 +85,18 @@ func MakeSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
 	}
 	cmd = sql
 	return cmd
+}
+
+func MakeDeleteTableSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
+	
+	cmd = "DELETE " + entitiesData.Table
+	return
+}
+
+func MakeDeleteTableFieldSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
+	
+	cmd = "ALTER TABLE " + entitiesData.Table + " DROP " + entitiesData.Fields
+	return
 }
 
 func OutParameters(entitiesData _struct.SQLAttributes) {
@@ -202,8 +214,6 @@ func GetSessionParamsFromURL(r *http.Request , entitiesData *_struct.DatabaseAtt
 	portparams, portok := r.URL.Query()["Port"]
 	userparams, userok := r.URL.Query()["User"]
 	passwordparams, passwordok := r.URL.Query()["Password"]
-	
-	
 	
 	if databaseok && len(databaseparams[0]) > 0 {
 		log.WithFields(log.Fields{"URL params length": len(databaseparams),	}).Debug(funcstr)
@@ -515,7 +525,7 @@ func GetSQLParamsFromString(params string , paramtype _struct.ParamFormatType, e
 
 //Returns the last-nLeft slice from URL
 //e.g. when nLeft == 0 returns the last slice
-func GetPathSliceFromURL(r *http.Request, nLeft int) (key string) {
+func GetRightPathSliceFromURL(r *http.Request, nLeft int) (key string) {
 	
 	urlstr := string(r.URL.String())
 	var keyval =  strings.SplitN(urlstr,"?",2)
@@ -527,6 +537,20 @@ func GetPathSliceFromURL(r *http.Request, nLeft int) (key string) {
 	return key
 }
 
+
+func GetLeftPathSliceFromURL(r *http.Request, nLeft int) (key string) {
+	
+	urlstr := string(r.URL.String())
+	var keyval =  strings.SplitN(urlstr,"?",2)
+	
+	urlstr = keyval[0]
+	t2 :=  strings.Split(urlstr,"/")
+	key = t2[nLeft+1]
+	log.WithFields(log.Fields{_sessions.SessionTokenStr: key,	}).Debug("func GetPathSliceFromURL")	
+	return key
+}
+
+
 func GetTableParamsFromURL(r *http.Request , entitiesData *_struct.GetTABLEAttributes) {
 	//	SELECT * FROM employees where last_name LIKE 'G%' ORDER BY emp_no;		  
 	//  http://localhost/api/v2/_table/employees?q&filter=(last_name like 'G%')&order=emp_no)
@@ -535,20 +559,20 @@ func GetTableParamsFromURL(r *http.Request , entitiesData *_struct.GetTABLEAttri
 	//  http://localhost/api/v2/_table/employees?q&fields=(id,bez)&filter=(last_name%20like%20G%25)&order=emp_no
 	
 	const funcstr = "func GetTableParamsFromURL"
-	curlparamst, okt := r.URL.Query()["ftext"]
+	curlparamst, okt := r.URL.Query()[_struct.FormatText]
 	if okt && len(curlparamst[0]) > 0 {
 		var paramtype _struct.ParamFormatType = _struct.Text
-		var par = strings.SplitN(r.RequestURI,"?ftext=",2)
+		var par = strings.SplitN(r.RequestURI,"?"+_struct.FormatText+"=",2)
 		if(len(par) > 0) {
 			GetTABLEParamsFromString(par[1] , paramtype, entitiesData)
 			return
 		}
 	}
 
-	curlparamsj, okj := r.URL.Query()["fjson"]
+	curlparamsj, okj := r.URL.Query()[_struct.FormatJson]
 	if okj && len(curlparamsj[0]) > 0 {
 		var paramtype _struct.ParamFormatType = _struct.Json
-		var par = strings.SplitN(r.RequestURI,"?fjson=",2)
+		var par = strings.SplitN(r.RequestURI,"?"+_struct.FormatJson+"=",2)
 		if(len(par) > 0) {
 			GetTABLEParamsFromString(par[1] , paramtype, entitiesData)
 			return
@@ -556,19 +580,19 @@ func GetTableParamsFromURL(r *http.Request , entitiesData *_struct.GetTABLEAttri
 	}
 
 	urlhintparams, okhint := r.URL.Query()["h"]	
-	fieldparams, okfields := r.URL.Query()["fields"]
-	orderparams, okorder := r.URL.Query()["order"]
-	filterparams, okfilter := r.URL.Query()["filter"]
-	groupparams, okgroup := r.URL.Query()["group"]
-	infoparams, okinfo := r.URL.Query()["info"]
-	limitparams, oklimit := r.URL.Query()["limit"]
+	fieldparams, okfields := r.URL.Query()[_struct.Fields]
+	orderparams, okorder := r.URL.Query()[_struct.Order]
+	filterparams, okfilter := r.URL.Query()[_struct.Filter]
+	groupparams, okgroup := r.URL.Query()[_struct.Group]
+	infoparams, okinfo := r.URL.Query()[_struct.Info]
+	limitparams, oklimit := r.URL.Query()[_struct.Limit]
 
-	log.WithFields(log.Fields{"urlhint": urlhintparams,	}).Debug(funcstr)	
-	log.WithFields(log.Fields{"fieldparams": fieldparams,	}).Debug(funcstr)
-	log.WithFields(log.Fields{"filterparams": filterparams,	}).Debug(funcstr)
-	log.WithFields(log.Fields{"orderparams": orderparams,	}).Debug(funcstr)
-	log.WithFields(log.Fields{"groupparams": groupparams,	}).Debug(funcstr)
-	log.WithFields(log.Fields{"infoparams": infoparams,	}).Debug(funcstr)
+	log.WithFields(log.Fields{"urlhint": urlhintparams,}).Debug(funcstr)	
+	log.WithFields(log.Fields{"fieldparams": fieldparams,}).Debug(funcstr)
+	log.WithFields(log.Fields{"filterparams": filterparams,}).Debug(funcstr)
+	log.WithFields(log.Fields{"orderparams": orderparams,}).Debug(funcstr)
+	log.WithFields(log.Fields{"groupparams": groupparams,}).Debug(funcstr)
+	log.WithFields(log.Fields{"infoparams": infoparams,}).Debug(funcstr)
 
 
 	if okhint && len(urlhintparams[0]) > 0 {
@@ -582,7 +606,7 @@ func GetTableParamsFromURL(r *http.Request , entitiesData *_struct.GetTABLEAttri
 			log.WithFields(log.Fields{"Key": string(keyval[0]),	}).Debug(funcstr+"->found key")
 			log.WithFields(log.Fields{"Val": string(keyval[1]),	}).Debug(funcstr+"->found value")
 			if(strings.EqualFold(string(keyval[0]), string("MIN"))) {				
-				log.WithFields(log.Fields{"Function "+keyval[0]: "Params "+string(keyval[1]),	}).Debug("func GetTableDataParamsFromURL->set key")
+				log.WithFields(log.Fields{"Function "+keyval[0]: "Params "+string(keyval[1]),	}).Debug(funcstr+"->set key")
 				entitiesData.Function = string(keyval[0])
 				entitiesData.FunctionParams = string(keyval[1])
 			}
