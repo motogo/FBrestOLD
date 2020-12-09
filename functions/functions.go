@@ -6,30 +6,20 @@ import (
 	"strconv"
 	"strings"
 	"encoding/json"
-	_struct "fbrest/Base/struct"		
-	_sessions "fbrest/Base/sessions"
-	//_httpstuff "fbrest/Base/httpstuff"
+	_struct "fbrest/FBxRESTBase/struct"		
+	_sessions "fbrest/FBxRESTBase/sessions"
+	_httpstuff "fbrest/FBxRESTBase/httpstuff"
 	"net/http"
 	"net/url"
 	"html/template"	
 	"path"
-	"fbrest/Base/config"
-	"time"
+	"fbrest/FBxRESTBase/config"
+	
 )
-
-
-type Profile struct {
-	Appname    string
-	Version string
-	Copyright string
-	Key string
-	Duration time.Duration
-  }
 
 func RestponWithText(w http.ResponseWriter, code int) {
 	
-
-	profile := Profile{config.AppName,  config.Version,config.Copyright, "-MNhE7Yf50sz6U9Hgqae", _sessions.MaxDuration}
+	profile := _struct.Profile{config.AppName,  config.Version,config.Copyright, "-MNhE7Yf50sz6U9Hgqae", _sessions.MaxDuration}
 	fp := path.Join("templates", "index.html")
 	tmpl, err := template.ParseFiles(fp)
 	if err != nil {
@@ -44,8 +34,7 @@ func RestponWithText(w http.ResponseWriter, code int) {
 
 func RestponInfoBusyText(w http.ResponseWriter, code int) {
 	
-
-	profile := Profile{config.AppName,  config.Version,config.Copyright, "-MNhE7Yf50sz6U9Hgqae", _sessions.MaxDuration}
+	profile := _struct.Profile{config.AppName,  config.Version,config.Copyright, "-MNhE7Yf50sz6U9Hgqae", _sessions.MaxDuration}
 	fp := path.Join("templates", "busy.html")
 	tmpl, err := template.ParseFiles(fp)
 	if err != nil {
@@ -87,15 +76,28 @@ func MakeSelectSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
 	return cmd
 }
 
-func MakeDeleteTableSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
+func MakeUpdateTableSQL(entitiesData _struct.FIELDVALUEAttributes) (cmd string) {
 	
-	cmd = "DELETE " + entitiesData.Table
+	var cmdHead  = "UPDATE " + entitiesData.Table + " SET " 
+	for _, fv := range entitiesData.FieldValue {
+		if(len(cmd)>0) { 
+			cmd = cmd + " , "
+		}
+		cmd = cmd + fv
+	}
+	cmd = cmdHead + cmd + " WHERE " + entitiesData.Filter
 	return
 }
 
-func MakeDeleteTableFieldSQL(entitiesData _struct.GetTABLEAttributes) (cmd string) {
+func MakeDeleteTableSQL(entitiesData _struct.FIELDVALUEAttributes) (cmd string) {
 	
-	cmd = "ALTER TABLE " + entitiesData.Table + " DROP " + entitiesData.Fields
+	cmd = "DROP TABLE " + entitiesData.Table
+	return
+}
+
+func MakeDeleteTableFieldSQL(entitiesData _struct.FIELDVALUEAttributes) (cmd string) {
+	
+	cmd = "ALTER TABLE " + entitiesData.Table + " DROP " + entitiesData.FieldValue[0]
 	return
 }
 
@@ -137,26 +139,43 @@ func GetTableParamsFromBODY(r *http.Request , entitiesData *_struct.GetTABLEAttr
 
 func GetSQLParamsFromURL(r *http.Request , entitiesData *_struct.SQLAttributes) {
 	const funcstr = "func GetSQLParamsFromURL"
+	var u = r.URL
+	
+    if(strings.HasPrefix(u.RawQuery,_struct.FormatText)) {		
+		
+		var par = u.RawQuery[len(_struct.FormatJson)+1:]
+		
+		log.Debug(par)
 
-	curlparamst, okt := r.URL.Query()["ftext"]
-	if okt && len(curlparamst[0]) > 0 {
-		var paramtype _struct.ParamFormatType = _struct.Text
-		var par = strings.SplitN(r.RequestURI,"?ftext=",2)
 		if(len(par) > 0) {
-			GetSQLParamsFromString(par[1] , paramtype, entitiesData)
+			GetSQLParamsFromString(par , entitiesData)
 			return
 		}
 	}
 
-	curlparamsj, okj := r.URL.Query()["fjson"]
-	if okj && len(curlparamsj[0]) > 0 {
-		var paramtype _struct.ParamFormatType = _struct.Json
-		var par = strings.SplitN(r.RequestURI,"?fjson=",2)
+	if(strings.HasPrefix(u.RawQuery,_struct.FormatJson)) {			
+		var par = u.RawQuery[len(_struct.FormatJson)+1:]
+
+		par = _httpstuff.UnEscape(par)
+				
+
 		if(len(par) > 0) {
-			GetSQLParamsFromString(par[1] , paramtype, entitiesData)
+			xdata := &_struct.GetUrlSQLAttributes{}
+
+			err := json.Unmarshal([]byte(par), &xdata)
+
+			if(err != nil) {
+				return
+			}
+
+			log.Debug(xdata)
+			entitiesData.Cmd = xdata.Cmd
+			entitiesData.Info = xdata.Info			
 			return
 		}
 	}
+
+
 
 	urlparams, ok := r.URL.Query()["cmd"]
 	infoparams, okinfo := r.URL.Query()["info"]
@@ -352,150 +371,46 @@ func GetSessionParamsFromString(params string , paramtype _struct.ParamFormatTyp
 	return
 }
 
-func GetTABLEParamsFromString(params string , paramtype _struct.ParamFormatType, entitiesData *_struct.GetTABLEAttributes) {
+func GetFIELDPayloadFromString(params string ,  entitiesData *_struct.FIELDVALUEAttributes) {
 	
-	const funcstr = "func GetTABLEParamsFromString"
+	// payload=(id:1, username: 'admin', email: 'email@example.org')
+
+	const funcstr = "func GetFIELDPayloadFromString"
 	var psplit  = "&"
 	var csplit  = "="
-	if(paramtype == _struct.Text) {
-		psplit = "&"
-		csplit = "="
-	} else if(paramtype == _struct.Json) {
-		psplit = ","
-		csplit = ":"
-	}
-
 	var par = strings.Split(params,psplit)
 
 	log.WithFields(log.Fields{"URL params length": len(par),	}).Debug(funcstr)
 	
     if len(par) > 0 {
 		for _, pars := range par {
-
-			keyval :=  strings.SplitN(pars,csplit,2)
-			if(paramtype == _struct.Json) {
-				var st = keyval[0][:4]
-				if(st == "{%22") {
-					keyval[0] = keyval[0][4:]
-				}	
-
-				st = keyval[0][len(keyval[0])-3:]	
-				if(st == "%22") {
-					keyval[0] = keyval[0][:len(keyval[0])-3]
-				}
-
-				st = keyval[1][:3]
-				if(st == "%22") {
-					keyval[1] = keyval[1][3:]
-				}	
-
-				st = keyval[1][len(keyval[1])-4:]	
-				if(st == "%22}") {
-					keyval[1] = keyval[1][:len(keyval[1])-4]
-				}
-			}
-			// "x=y&k=n"
-			if(paramtype == _struct.Text) {
-				var st = keyval[0][:3]
-				if(st == "%22") {
-					keyval[0] = keyval[0][3:]
-				}	
-
-				st = keyval[1][len(keyval[1])-3:]	
-				if(st == "%22") {
-					keyval[1] = keyval[1][:len(keyval[1])-3]
-				}
-			}
-			
-			
+			params = _httpstuff.UnEscape(pars)
+			keyval :=  strings.SplitN(params,csplit,2)
+						
 			log.WithFields(log.Fields{"Key": string(keyval[0]),	}).Debug(funcstr+"->found key")
 			log.WithFields(log.Fields{"Val": string(keyval[1]),	}).Debug(funcstr+"->found value")
 			
 			if(strings.EqualFold(string(keyval[0]), string("FIELDS"))) {								
 				log.WithFields(log.Fields{"Fields": string(keyval[1]),	}).Debug(funcstr+"->set Fields")
-				entitiesData.Fields = string(keyval[1])
-				if(len(entitiesData.Fields) < 1) {
-					entitiesData.Fields = "*"
-				}
-			}
-			if(strings.EqualFold(string(keyval[0]), string("ORDER"))) {								
-				log.WithFields(log.Fields{"Order by": string(keyval[1]),	}).Debug(funcstr+"->set Order by")
-				entitiesData.OrderBy = string(keyval[1])
-			}
-			if(strings.EqualFold(string(keyval[0]), string("GROUP"))) {								
-				log.WithFields(log.Fields{"Group by": string(keyval[1]),	}).Debug(funcstr+"->set Group by")
-				entitiesData.GroupBy = string(keyval[1])
-			}
-			if(strings.EqualFold(string(keyval[0]), string("FILTER"))) {								
-				log.WithFields(log.Fields{"Filter": string(keyval[1]),	}).Debug(funcstr+"->set Filter")
-				entitiesData.Filter = string(keyval[1])
-			}
-			if(strings.EqualFold(string(keyval[0]), string("INFO"))) {								
-				log.WithFields(log.Fields{"Info:": string(keyval[1]),	}).Debug(funcstr+"->set Info")
-				entitiesData.Info = string(keyval[1])
-			}
-			if(strings.EqualFold(string(keyval[0]), string("LIMIT"))) {								
-				log.WithFields(log.Fields{"Limit:": string(keyval[1]),	}).Debug(funcstr+"->set Limit")
-				var lm = strings.Split(string(keyval[1]),",")
-				if(len(lm) == 1) {
-					entitiesData.First,_ = strconv.Atoi(lm[0])
-					entitiesData.Skip = 0
-				} else if (len(lm) == 2) {
-					entitiesData.First,_ = strconv.Atoi(lm[0])
-					entitiesData.Skip,_ = strconv.Atoi(lm[1])		
-				}
-			}
+				
+			}			
 		}		
 	} 
 	return
 }
 
-func GetSQLParamsFromString(params string , paramtype _struct.ParamFormatType, entitiesData *_struct.SQLAttributes) {
+func GetSQLParamsFromString(params string ,entitiesData *_struct.SQLAttributes) {
 	
 	const funcstr = "func GetSQLParamsFromString"
-
 	var csplit  = "="
-	if(paramtype == _struct.Text) {
-		
-		csplit = "="
-	} else if(paramtype == _struct.Json) {
-		
-		csplit = ":"
-	}
-
 	var par = params
 
 	log.WithFields(log.Fields{"URL params length": len(par),	}).Debug(funcstr)
+    params = _httpstuff.UnEscape(par)
+	log.WithFields(log.Fields{"SQL": params,	}).Debug(funcstr+"->set key")
+
 	
-	if(paramtype == _struct.Json) {
-		var st = params[:4]
-		if(st == "{%22") {
-			params = params[4:]
-		}	
-
-		st = params[len(params)-4:]	
-		if(st == "%22}") {
-			params = params[:len(params)-4]
-		}
-	}
-	// "x=y&k=n"
-	if(paramtype == _struct.Text) {
-		var st = params[:3]
-		if(st == "%22") {
-			params = params[3:]
-		}	
-
-		st = params[len(params)-3:]	
-		if(st == "%22") {
-			params = params[:len(params)-3]
-		}
-	}
-																				
-	log.WithFields(log.Fields{"SQL cmd": params,	}).Debug(funcstr+"->set key")
-
-	urlparam,_ := url.QueryUnescape(params)
-
-	keyval :=  strings.SplitN(urlparam,csplit,2)
+	keyval :=  strings.SplitN(params,csplit,2)
 	
 	log.WithFields(log.Fields{"Key": string(keyval[0]),	}).Debug(funcstr+"->found key")
 	log.WithFields(log.Fields{"Val": string(keyval[1]),	}).Debug(funcstr+"->found value")
@@ -517,11 +432,9 @@ func GetSQLParamsFromString(params string , paramtype _struct.ParamFormatType, e
 	if(strings.EqualFold(string(keyval[0]), string("INFO"))) {								
 		log.WithFields(log.Fields{"Info": string(keyval[1]),	}).Debug(funcstr+"->set key")
 		entitiesData.Info = string(keyval[1])
-	}
-							
+	}							
 	return
 }
-
 
 //Returns the last-nLeft slice from URL
 //e.g. when nLeft == 0 returns the last slice
@@ -537,7 +450,6 @@ func GetRightPathSliceFromURL(r *http.Request, nLeft int) (key string) {
 	return key
 }
 
-
 func GetLeftPathSliceFromURL(r *http.Request, nLeft int) (key string) {
 	
 	urlstr := string(r.URL.String())
@@ -550,69 +462,64 @@ func GetLeftPathSliceFromURL(r *http.Request, nLeft int) (key string) {
 	return key
 }
 
-
 func GetTableParamsFromURL(r *http.Request , entitiesData *_struct.GetTABLEAttributes) {
-	//	SELECT * FROM employees where last_name LIKE 'G%' ORDER BY emp_no;		  
-	//  http://localhost/api/v2/_table/employees?q&filter=(last_name like 'G%')&order=emp_no)
-	//
-	//	SELECT id,bez FROM employees where last_name LIKE 'G%' ORDER BY emp_no;		  
-	//  http://localhost/api/v2/_table/employees?q&fields=(id,bez)&filter=(last_name%20like%20G%25)&order=emp_no
+	
+	//  http://localhost:4488/{{.Key}}/rest/get/TSTANDORT?fjson={"table": "TSTANDORT","fields": ["ID","BEZ","GUELTIG"],"filter":"ID=1 AND BEZ like 'x%'","order": ["BEZ ASC","ID DESC"],"groupby": ["ID","BEZ"],"first": 0}
 	
 	const funcstr = "func GetTableParamsFromURL"
-	curlparamst, okt := r.URL.Query()[_struct.FormatText]
-	if okt && len(curlparamst[0]) > 0 {
-		var paramtype _struct.ParamFormatType = _struct.Text
-		var par = strings.SplitN(r.RequestURI,"?"+_struct.FormatText+"=",2)
+
+	var u = r.URL
+	if(strings.HasPrefix(u.RawQuery,_struct.FormatJson)) {			
+		var par = u.RawQuery[len(_struct.FormatJson)+1:]
+		par = _httpstuff.UnEscape(par)
+			
+
 		if(len(par) > 0) {
-			GetTABLEParamsFromString(par[1] , paramtype, entitiesData)
+			xdata := &_struct.GetUrlTABLEAttributes{}
+
+			err := json.Unmarshal([]byte(par), &xdata)
+
+			if(err != nil) {
+				return
+			}
+
+			log.Info(xdata)
+			entitiesData.Fields = strings.Join(xdata.Fields,",")
+			entitiesData.Filter = xdata.Filter
+			entitiesData.GroupBy = strings.Join(xdata.GroupBy,",")
+			entitiesData.OrderBy = strings.Join(xdata.OrderBy,",")
+			entitiesData.Skip = xdata.Skip
+			entitiesData.First = xdata.First			
 			return
 		}
 	}
-
-	curlparamsj, okj := r.URL.Query()[_struct.FormatJson]
-	if okj && len(curlparamsj[0]) > 0 {
-		var paramtype _struct.ParamFormatType = _struct.Json
-		var par = strings.SplitN(r.RequestURI,"?"+_struct.FormatJson+"=",2)
-		if(len(par) > 0) {
-			GetTABLEParamsFromString(par[1] , paramtype, entitiesData)
-			return
+	
+	if(strings.HasPrefix(u.RawQuery,_struct.FormatText)) {		
+		var par = u.RawQuery[len(_struct.FormatText)+1:]
+		if(strings.HasPrefix(par,"%22")) { 
+			par = par[3:] 
 		}
+		if(strings.HasSuffix(par,"%22")) { 
+			par = par[:len(par)-3] 
+		}
+		u, _ = url.Parse(u.Path+"?"+par)
+		log.Info(u)		
 	}
 
-	urlhintparams, okhint := r.URL.Query()["h"]	
-	fieldparams, okfields := r.URL.Query()[_struct.Fields]
-	orderparams, okorder := r.URL.Query()[_struct.Order]
-	filterparams, okfilter := r.URL.Query()[_struct.Filter]
-	groupparams, okgroup := r.URL.Query()[_struct.Group]
-	infoparams, okinfo := r.URL.Query()[_struct.Info]
-	limitparams, oklimit := r.URL.Query()[_struct.Limit]
-
-	log.WithFields(log.Fields{"urlhint": urlhintparams,}).Debug(funcstr)	
+	fieldparams, okfields := u.Query()[_struct.Fields]
+	orderparams, okorder := u.Query()[_struct.Order]
+	filterparams, okfilter := u.Query()[_struct.Filter]
+	groupparams, okgroup := u.Query()[_struct.Group]
+	infoparams, okinfo := u.Query()[_struct.Info]
+	limitparams, oklimit := u.Query()[_struct.Limit]
+	
 	log.WithFields(log.Fields{"fieldparams": fieldparams,}).Debug(funcstr)
 	log.WithFields(log.Fields{"filterparams": filterparams,}).Debug(funcstr)
 	log.WithFields(log.Fields{"orderparams": orderparams,}).Debug(funcstr)
 	log.WithFields(log.Fields{"groupparams": groupparams,}).Debug(funcstr)
 	log.WithFields(log.Fields{"infoparams": infoparams,}).Debug(funcstr)
 
-
-	if okhint && len(urlhintparams[0]) > 0 {
-		urlparam :=urlhintparams[0]
-		s :=  strings.Split(urlparam,",")
-	
-		for _, pars := range s {
-			
-			keyval :=  strings.SplitN(pars,":",2)
-
-			log.WithFields(log.Fields{"Key": string(keyval[0]),	}).Debug(funcstr+"->found key")
-			log.WithFields(log.Fields{"Val": string(keyval[1]),	}).Debug(funcstr+"->found value")
-			if(strings.EqualFold(string(keyval[0]), string("MIN"))) {				
-				log.WithFields(log.Fields{"Function "+keyval[0]: "Params "+string(keyval[1]),	}).Debug(funcstr+"->set key")
-				entitiesData.Function = string(keyval[0])
-				entitiesData.FunctionParams = string(keyval[1])
-			}
-		}
-	}
-	
+		
     if okfields && len(fieldparams[0]) > 0 {
 		
 		urlparam := fieldparams[0]
@@ -687,5 +594,75 @@ func GetTableParamsFromURL(r *http.Request , entitiesData *_struct.GetTABLEAttri
 		}
 	}
 
+	return
+}
+
+func GetFIELDPayloadFromURL(r *http.Request , entitiesData *_struct.FIELDVALUEAttributes) {
+	//  http://localhost:4488/{{.Key}}/rest/put/TSTANDORT?payload=(bez='Nürnberg2')&filter=(bez='Nürnberg1')  
+	//  http://localhost:4488/{{.Key}}/rest/put/TSTANDORT?ftext="payload=(bez='Nürnberg2')&filter=(bez='Nürnberg1')"
+	// http://localhost:4488/{{.Key}}/rest/put/TSTANDORT?fjson={"payload":["ID='123'","BEZ='test'","GUELTIG=1"], "filter": "ID=1 AND BEZ like 'x%'"}
+
+	const funcstr = "func GetTableParamsFromURL"
+	var u = r.URL
+
+	curlparamst, okt := r.URL.Query()[_struct.FormatText]
+	if okt && len(curlparamst[0]) > 0 {
+		
+		var par = strings.SplitN(r.RequestURI,"?"+_struct.FormatText+"=",2)
+		if(len(par) > 0) {
+			GetFIELDPayloadFromString(par[1] , entitiesData)
+			return
+		}
+	}
+
+	if(strings.HasPrefix(u.RawQuery,_struct.FormatJson)) {			
+		var par = u.RawQuery[len(_struct.FormatJson)+1:]
+		par = _httpstuff.UnEscape(par)
+		if(len(par) > 0) {
+			xdata := &_struct.GetUrlPayloadAttributes{}
+			err := json.Unmarshal([]byte(par), &xdata)
+			if(err != nil) {
+				return
+			}
+
+			log.Info(xdata)
+			for _, vals := range xdata.Payload {
+				entitiesData.FieldValue = append(entitiesData.FieldValue,vals)
+			}
+			entitiesData.Filter = xdata.Filter
+			return
+		}
+	}
+
+	payloadparams, okpayload := r.URL.Query()[_struct.Payload]
+	filterparams, okfilter := r.URL.Query()[_struct.Filter]
+
+	log.WithFields(log.Fields{"payloadparams": payloadparams,}).Debug(funcstr)
+			
+    if okpayload && len(payloadparams[0]) > 0 {
+		var pars = payloadparams[0]
+		log.Info(pars)
+		
+		var st = pars[:1]
+		if(st == "(") {
+			pars = pars[1:]
+		}	
+
+		st = pars[len(pars)-1:]	
+		if(st == ")") {
+			pars = pars[:len(pars)-1]
+		}
+
+		keyval :=  strings.SplitN(pars,",",2)
+
+		for _, pars := range keyval {
+			entitiesData.FieldValue = append(entitiesData.FieldValue,pars)	
+		}
+	} 
+
+	if okfilter && len(filterparams[0]) > 0 {	
+		entitiesData.Filter = filterparams[0]
+	}
+	
 	return
 }

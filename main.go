@@ -2,14 +2,15 @@ package main
 
 import (
 	"github.com/gorilla/mux"
-	"fbrest/Base/apis"
+	"fbrest/FBxRESTBase/apis"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"fbrest/Base/config"
-	_permissions "fbrest/Base/permissions"
+	"fbrest/FBxRESTBase/config"
+	_permissions "fbrest/FBxRESTBase/permissions"
+	//_tests "fbrest/FBxRESTBase/tests"
 )
 
 func main(){
@@ -65,7 +66,9 @@ func main(){
 	} else {
 		log.SetLevel(log.ErrorLevel)	
 	}
-
+	//_tests.WriteGetUrlPayloadAttributesJson("tests/UrlPayloadAttributes.json")
+	//_tests.ReadJson("appconfig/test.xml")
+	//_tests.WriteJson("appconfig/test.xml")
 	//_permissions.WritePermissions("appconfig/permissions.xml")
 	
 	_permissions.ReadPermissions("appconfig/permissions.xml")
@@ -73,17 +76,27 @@ func main(){
 	router := mux.NewRouter()
 
 	router.HandleFunc("/{token}/rest/get/{table}",apis.GetTableData).Methods("GET")	
-	router.HandleFunc("/{token}/rest/delete/{table}",apis.DeleteTableData).Methods("DELETE")	
-	router.HandleFunc("/{token}/rest/delete/{table}/{field}",apis.DeleteTableFieldData).Methods("DELETE")	
+	router.HandleFunc("/{token}/rest/delete/{table}",apis.DeleteTableData).Methods("POST")	
+	router.HandleFunc("/{token}/rest/delete/{table}/{field}",apis.DeleteTableFieldData).Methods("POST")	
+	router.HandleFunc("/{token}/rest/put/{table}",apis.UpdateTableData).Methods("PUT")	
+
+	//Handling update insert and delete with payload in URL not only in body
+	router.HandleFunc("/{token}/rest/delete/{table}",apis.DeleteTableDataGET).Methods("GET")
+	router.HandleFunc("/{token}/rest/delete/{table}/{field}",apis.DeleteTableFieldDataGET).Methods("GET")	
+	router.HandleFunc("/{token}/rest/put/{table}",apis.UpdateTableDataGET).Methods("GET")	
+	
+
 	router.HandleFunc("/{token}/db/sql/get",apis.GetSQLData).Methods("GET")
 	router.HandleFunc("/{token}/db/test",apis.TestDBOpenClose).Methods("GET")
-
 	router.HandleFunc("/api/sql/test",apis.TestSQLResponse).Methods("GET")	
 	router.HandleFunc("/api/token/get",apis.GetSessionKey).Methods("GET")
-	router.HandleFunc("/api/token/delete/{token}",apis.DeleteSessionKey).Methods("GET")
-	router.HandleFunc("/api/token/set/{token}",apis.SetSessionKey).Methods("GET")
-	router.HandleFunc("/api/help",apis.GetHelp).Methods("GET")
 	
+	router.HandleFunc("/api/token/delete/{token}",apis.DeleteSessionKey).Methods("GET")
+	router.HandleFunc("/api/token/delete/{token}",apis.DeleteSessionKey).Methods("POST")
+	router.HandleFunc("/api/token/set/{token}",apis.SetSessionKey).Methods("POST")
+	router.HandleFunc("/api/token/set/{token}",apis.SetSessionKeyGET).Methods("GET")
+	router.HandleFunc("/api/help",apis.GetHelp).Methods("GET")
+
 	log.Info(config.AppName + " " + config.Copyright);
 	log.Info(" ")
 	log.Info("Version:"+config.Version);

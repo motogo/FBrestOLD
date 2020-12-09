@@ -1,0 +1,18 @@
+{
+ "table": "TSTANDORT",
+ "fields": [
+  "ID",
+  "BEZ",
+  "GUELTIG"
+ ],
+ "filter": "ID=1 AND BEZ like 'x%'",
+ "orderby": [
+  "BEZ,ASC",
+  "ID,DESC"
+ ],
+ "groupby": [
+  "ID",
+  "BEZ"
+ ],
+ "first": 0
+}

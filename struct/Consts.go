@@ -9,4 +9,5 @@ const(
 	Limit string = "limit"
 	FormatJson string = "fjson"
 	FormatText string = "ftext"
+	Payload string = "payload"
 )

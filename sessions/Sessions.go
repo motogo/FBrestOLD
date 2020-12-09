@@ -2,14 +2,14 @@ package _sessions
 
 import (
 	log "github.com/sirupsen/logrus"
-	_httpstuff "fbrest/Base/httpstuff"
-	_permissions "fbrest/Base/permissions"
+	_httpstuff "fbrest/FBxRESTBase/httpstuff"
+	_permissions "fbrest/FBxRESTBase/permissions"
 	"sync"
 	"time"
 	"strconv"
 	"net/http"
-	_struct "fbrest/Base/struct"		
-	_apperrors "fbrest/Base/apperrors"
+	_struct "fbrest/FBxRESTBase/struct"		
+	_apperrors "fbrest/FBxRESTBase/apperrors"
 )
 
 const MaxDuration = 30*60*1E9  //ns
@@ -102,17 +102,16 @@ func TokenValid(response http.ResponseWriter, key string) (kv Items) {
 	return kv
 }
 	
-var (
-		r *repository
-)
+var instance *repository
+
 	
 func Repository() *repository {
-	if r == nil {
-		r = &repository {
+	if instance == nil {
+		instance = &repository {
 			items: make(map[string]Items),
 		}
 	}
-	return r
+	return instance
 }
 
 

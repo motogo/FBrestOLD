@@ -1,17 +1,54 @@
 package _struct
 
+import "time"
+
+type FieldValueAttributes struct {
+	Field string `json:"field"`
+	Value string `json:"value"`
+}
+
+type GetUrlSQLAttributes struct {
+ 
+	Cmd string  `json:"cmd"`
+	Info string `json:"info"`	
+   }
+
 type SQLAttributes struct {
  
- Cmd string  `json:"CMD"`
+ Cmd string  `json:"cmd"`
  Sepfill string  `json:"sepfill"`
- Info string `json:"INFO"`
+ Info string `json:"info"`
  Debug string `json:"Debug"`
 }
 
+type FIELDVALUEAttributes struct {	
+	Table string `json:"table"` 
+	Filter string `json:"filter"` 
+	FieldValue []string `json:"fieldvalue"` 
+	Debug string `json:"debug"`
+   }
+
+type GetUrlTABLEAttributes struct {	
+	Table string `json:"table"` 		
+	Fields []string `json:"fields"` 
+	Filter string `json:"filter"` 
+	OrderBy []string `json:"order"` 
+	GroupBy []string `json:"group"`	
+	First int `json:"first"` 	
+	Skip int `json:"skip"` 	
+   }
+
+  
+type GetUrlPayloadAttributes struct {	
+	
+	Payload []string `json:"payload"` 
+	Filter string `json:"filter"` 	
+   }
+
 type GetTABLEAttributes struct {	
 	Table string `json:"table"` 
-	Function string `json:"Function"` 
-	FunctionParams string `json:"FunctionParams"` 
+	Function string `json:"function"` 
+	FunctionParams string `json:"functionparams"` 
 	Fields string `json:"fields"` 
 	Filter string `json:"filter"` 
 	OrderBy string `json:"orderby"` 
@@ -32,13 +69,10 @@ type GetTABLEAttributes struct {
 	User string `json:"user"`	
    }
 
-   type DBFilterAttributes struct {
-	Field string `json:"Field"`
-	Value string `json:"Value"`
-   }
+
    type SelectDBAttributes struct {
 	   Fields []string `json:"Fields"`
-	   Filter []DBFilterAttributes `json:"Filter"`
+	   Filter []FieldValueAttributes `json:"Filter"`
    }
 
 type ParamFormatType string
@@ -53,5 +87,13 @@ const(
     SepFillApos SepFillType = "'"
     SepFillMinus = "-"
 )
+
+type Profile struct {
+	Appname    string
+	Version string
+	Copyright string
+	Key string
+	Duration time.Duration
+  }
 
    

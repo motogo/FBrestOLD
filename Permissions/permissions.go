@@ -4,8 +4,8 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	"sync"
-	//"os"
-	_apperrors "fbrest/Base/apperrors"
+	"strconv"
+	_apperrors "fbrest/FBxRESTBase/apperrors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -143,11 +143,13 @@ func ReadPermissions(pfile string) {
 		if(len(xd.UserKey) > 0) {				
 			if(!rep.Exists(xd.UserKey)) {
 				var itm = rep.Add(xd.UserKey, xd.UserPassword, xd.DBUser, xd.DBPassword, xd.Type)		
-				log.WithFields(log.Fields{"Added permission": "User key:"+itm.UserKey+" DBUser:"+itm.DBUser+" Permission:"+string(itm.Type),	}).Debug("func ReadPermissions")	
+				log.WithFields(log.Fields{"Added permission": "User key:"+itm.UserKey+" DBUser:"+itm.DBUser+" Permission:"+strconv.Itoa(int(itm.Type)),	}).Debug("func ReadPermissions")	
 			}
 		}
 	}  
 }
+
+
 
 func WritePermissions(pfile string) {
 	var data Permissions
@@ -178,3 +180,4 @@ func WritePermissions(pfile string) {
 	_ = ioutil.WriteFile(pfile, file, 0644)
 	
 }
+

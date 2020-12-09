@@ -1,0 +1,8 @@
+{
+ "payload": [
+  "ID='123'",
+  "BEZ='test'",
+  "GUELTIG=1"
+ ],
+ "filter": "ID=1 AND BEZ like 'x%'"
+}

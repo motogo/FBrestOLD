@@ -1,15 +1,15 @@
 package apis
 
 import (
-	"fbrest/Base/config"
-	"fbrest/Base/models"	
+	"fbrest/FBxRESTBase/config"
+	"fbrest/FBxRESTBase/models"	
 	"strconv"	
-	_struct "fbrest/Base/struct"
-	_functions "fbrest/Base/functions"
-	_sessions "fbrest/Base/sessions"
-	_permissions "fbrest/Base/permissions"
-	_httpstuff "fbrest/Base/httpstuff"
-	_apperrors "fbrest/Base/apperrors"
+	_struct "fbrest/FBxRESTBase/struct"
+	_functions "fbrest/FBxRESTBase/functions"
+	_sessions "fbrest/FBxRESTBase/sessions"
+	_permissions "fbrest/FBxRESTBase/permissions"
+	_httpstuff "fbrest/FBxRESTBase/httpstuff"
+	_apperrors "fbrest/FBxRESTBase/apperrors"
 	"net/http"
 	log "github.com/sirupsen/logrus"	
 	bguuid "github.com/kjk/betterguid"
@@ -128,6 +128,11 @@ func DeleteSessionKey(response http.ResponseWriter, r *http.Request) {
 	_httpstuff.RestponWithJson(response, http.StatusOK, Response)			
 }
 
+func SetSessionKeyGET(response http.ResponseWriter, r *http.Request) {
+	r.Method = "POST"
+	SetSessionKey(response, r)
+}
+
 func SetSessionKey(response http.ResponseWriter, r *http.Request) {
 	
 	var dbData _struct.DatabaseAttributes
@@ -210,12 +215,15 @@ func GetSQLData(response http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// localhost:4488/token/rest/get/TSTANDORT?fields=(id,bez)&order=(bez asc, id desc)&filter=(BEZ like 'T%')&group=(id,bez)</li>
+// localhost:4488/token/rest/get/TSTANDORT?ftext="fields=(id,bez)&order=(bez asc, id desc)&filter=(BEZ like 'T%')&group=(id,bez)"</li>
+// localhost:4488/token/rest/get/TSTANDORT?fjson="{"fields":["id","bez"]},{"order":["bez asc","id desc"]},{"filter":"BEZ like 'T%'"},{"group":["id","bez"]}"</li>
 func GetTableData(response http.ResponseWriter, r *http.Request) {
 
 
 	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetTableData")
 	
-	var key = _functions.GetLeftPathSliceFromURL(r,1)
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
 	var kv  = _sessions.TokenValid(response, key)
 	if(!kv.Valid) {
 		return
@@ -228,7 +236,7 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
-
+	
 	var entitiesData _struct.GetTABLEAttributes
 	var table = _functions.GetRightPathSliceFromURL(r,0)
 	entitiesData.Table = table
@@ -272,12 +280,18 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DeleteTableData(response http.ResponseWriter, r *http.Request) {
+func UpdateTableDataGET(response http.ResponseWriter, r *http.Request) {
+	r.Method = "PUT"
+	UpdateTableData(response,r)
+}
 
+func UpdateTableData(response http.ResponseWriter, r *http.Request) {
+
+	// http://localhost:4488/{{.Key}}/rest/put/TSTANDORT?payload=(username='admin', email='email@example.org')&filter=(id=1)
 
 	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetTableData")
 	
-	var key = _functions.GetLeftPathSliceFromURL(r,1)
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
 	var kv  = _sessions.TokenValid(response, key)
 	if(!kv.Valid) {
 		return
@@ -291,17 +305,83 @@ func DeleteTableData(response http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var entitiesData _struct.GetTABLEAttributes
+	var entitiesData _struct.FIELDVALUEAttributes
+	var table = _functions.GetRightPathSliceFromURL(r,0)
+	entitiesData.Table = table
+	
+
+	_functions.GetFIELDPayloadFromURL(r , &entitiesData)		
+	//_functions.GetTableParamsFromBODY(r , &entitiesData)	
+	//_functions.OutTableParameters(entitiesData) 	
+	
+	if(len(entitiesData.Table) < 1) {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = "Update failure"
+		Response.Data = "No table given"
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	db, err := config.ConnLocationWithSession(kv)
+	
+	if err != nil {
+		Response.Status = http.StatusInternalServerError
+		Response.Message = err.Error()
+		Response.Data = nil
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+	} else {
+		_models := models.ModelGetData{DB:db}
+		var cmd string = _functions.MakeUpdateTableSQL(entitiesData)
+		
+		IsiData, err2 := _models.GetSQLData(cmd)
+		if err2 != nil {
+			Response.Status = http.StatusInternalServerError
+			Response.Message = cmd
+			Response.Data = err2.Error()
+			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		} else {
+			Response.Status = http.StatusOK
+			Response.Message = cmd
+			Response.Data = &IsiData
+			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
+		}
+	}
+}
+
+
+func DeleteTableDataGET(response http.ResponseWriter, r *http.Request) {
+	r.Method = "POST"
+	DeleteTableData(response, r)
+}
+func DeleteTableData(response http.ResponseWriter, r *http.Request) {
+
+	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func DeleteTableData")
+	
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
+	var kv  = _sessions.TokenValid(response, key)
+	if(!kv.Valid) {
+		return
+	}
+	var Response _struct.ResponseData
+	if(kv.Permission < _permissions.Read) {
+		Response.Status = http.StatusNotFound
+		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
+		Response.Data = key
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	var entitiesData _struct.FIELDVALUEAttributes
 	var table = _functions.GetRightPathSliceFromURL(r,0)
 	
 	entitiesData.Table = table
 	
-	_functions.OutTableParameters(entitiesData) 	
+	//_functions.OutTableParameters(entitiesData) 	
 	
 	if(len(entitiesData.Table) < 1) {
 		Response.Status = http.StatusInternalServerError
-		Response.Message = entitiesData.Info
-		Response.Data = "No Table given"
+		Response.Message = "" //entitiesData.Info
+		Response.Data = "No table given"
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -320,24 +400,28 @@ func DeleteTableData(response http.ResponseWriter, r *http.Request) {
 		IsiData, err2 := _models.RunSQLData(cmd)
 		if err2 != nil {
 			Response.Status = http.StatusInternalServerError
-			Response.Message = entitiesData.Info
+			Response.Message = cmd
 			Response.Data = err2.Error()
 			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
 			Response.Status = http.StatusOK
-			Response.Message = entitiesData.Info
+			Response.Message = cmd
 			Response.Data = &IsiData
 			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		}
 	}
 }
 
+func DeleteTableFieldDataGET(response http.ResponseWriter, r *http.Request) {
+	r.Method = "POST"
+	DeleteTableFieldData(response, r)
+}
+
 func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
 
-
-	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetTableData")
+	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func DeleteTableFieldData")
 	
-	var key = _functions.GetLeftPathSliceFromURL(r,1)
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
 	var kv  = _sessions.TokenValid(response, key)
 	if(!kv.Valid) {
 		return
@@ -351,25 +435,26 @@ func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var entitiesData _struct.GetTABLEAttributes
+	var entitiesData _struct.FIELDVALUEAttributes
 	var table = _functions.GetRightPathSliceFromURL(r,1)
 	var field = _functions.GetRightPathSliceFromURL(r,0)
-	entitiesData.Table = table
-	entitiesData.Fields = field
-	_functions.OutTableParameters(entitiesData) 	
+	entitiesData.Table = table	
+	entitiesData.FieldValue = append(entitiesData.FieldValue,field);
+	
+	//_functions.OutTableParameters(entitiesData) 	
 	
 	if(len(entitiesData.Table) < 1) {
 		Response.Status = http.StatusInternalServerError
-		Response.Message = entitiesData.Info
-		Response.Data = "No Table given"
+		Response.Message = "" //entitiesData.Info
+		Response.Data = "No table given"
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
 
-	if(len(entitiesData.Fields) < 1) {
+	if(len(entitiesData.FieldValue) < 1) {
 		Response.Status = http.StatusInternalServerError
-		Response.Message = entitiesData.Info
-		Response.Data = "No Field given"
+		Response.Message = "" //entitiesData.Info
+		Response.Data = "No field given"
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -388,12 +473,12 @@ func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
 		IsiData, err2 := _models.RunSQLData(cmd)
 		if err2 != nil {
 			Response.Status = http.StatusInternalServerError
-			Response.Message = entitiesData.Info
+			Response.Message = cmd
 			Response.Data = err2.Error()
 			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
 			Response.Status = http.StatusOK
-			Response.Message = entitiesData.Info
+			Response.Message = cmd
 			Response.Data = &IsiData
 			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		}
