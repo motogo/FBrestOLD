@@ -2,7 +2,7 @@ package _tests
 
 import (
 
-		_struct "fbrest/Base/struct"
+		_struct "fbrest/FBxRESTBase/struct"
 		"encoding/json"
 		"io/ioutil"
 		log "github.com/sirupsen/logrus"
@@ -49,6 +49,8 @@ func WriteGetUrlPayloadAttributesJson(pfile string) {
 }
 
 
+
+
 func ReadUrlTABLEAttributesJson(pfile string) {
 	data, err := ioutil.ReadFile(pfile)
     if err != nil {		
@@ -58,4 +60,36 @@ func ReadUrlTABLEAttributesJson(pfile string) {
 	xdata := &_struct.GetUrlPayloadAttributes{}
 	json.Unmarshal(data,&xdata)
 	log.Info(data)
+}
+
+func WriteUrlSessionAttributesJson(pfile string) {
+	var data _struct.DatabaseAttributes
+	
+	data.Password = "su"	
+	data.User     = "superuser"
+	data.Location = "localhost"
+	data.Database = "D:/Data/Dokuments/DOKUMENTS30.FDB"
+	
+	file, _ := json.MarshalIndent(data, "", " ")
+ 
+	_ = ioutil.WriteFile(pfile, file, 0644)
+	
+}
+
+
+
+
+func ReadUrlUrlSessionAttributesJson(pfile string) {
+	data, err := ioutil.ReadFile(pfile)
+    if err != nil {		
+		log.WithFields(log.Fields{"File reading error": err,	}).Error("func ReadUrlTABLEAttributesJson")	
+        return
+    }
+	xdata := &_struct.DatabaseAttributes{}
+	json.Unmarshal(data,&xdata)
+	log.Info(data)
+}
+
+func Dummy() {
+
 }

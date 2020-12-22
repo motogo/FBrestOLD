@@ -10,7 +10,7 @@ import (
 	"strings"
 	"fbrest/FBxRESTBase/config"
 	_permissions "fbrest/FBxRESTBase/permissions"
-	//_tests "fbrest/FBxRESTBase/tests"
+	_tests "fbrest/FBxRESTBase/tests"
 )
 
 func main(){
@@ -66,16 +66,19 @@ func main(){
 	} else {
 		log.SetLevel(log.ErrorLevel)	
 	}
+	_tests.Dummy()
 	//_tests.WriteGetUrlPayloadAttributesJson("tests/UrlPayloadAttributes.json")
 	//_tests.ReadJson("appconfig/test.xml")
 	//_tests.WriteJson("appconfig/test.xml")
 	//_permissions.WritePermissions("appconfig/permissions.xml")
+	_tests.WriteUrlSessionAttributesJson("tests/UrlSessionAttributes.json") 
 	
 	_permissions.ReadPermissions("appconfig/permissions.xml")
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/{token}/rest/get/{table}",apis.GetTableData).Methods("GET")	
+	router.HandleFunc("/{token}/rest/get/{table}/{field}/{fieldvalue}",apis.GetTableFieldData).Methods("GET")	
 	router.HandleFunc("/{token}/rest/delete/{table}",apis.DeleteTableData).Methods("POST")	
 	router.HandleFunc("/{token}/rest/delete/{table}/{field}",apis.DeleteTableFieldData).Methods("POST")	
 	router.HandleFunc("/{token}/rest/put/{table}",apis.UpdateTableData).Methods("PUT")	

@@ -78,7 +78,7 @@ func TokenValid(response http.ResponseWriter, key string) (kv Items) {
 	if(len(kv.Value) < 1) {
 		Response.Status = http.StatusForbidden
 		Response.Message = "No valid database connection found by "+SessionTokenStr+" "+kv.Token
-		Response.Data = nil
+		Response.Data = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		kv.Valid = false
 		return kv
@@ -88,9 +88,9 @@ func TokenValid(response http.ResponseWriter, key string) (kv Items) {
 	difference := end.Sub(kv.Start)
 	if(difference > duration) {
 		//Zeit für Key abgelaufen
-		Response.Status = http.StatusForbidden
+		Response.Status  = http.StatusForbidden
 		Response.Message = SessionTokenStr+" "+kv.Token + " has expired after "+ strconv.Itoa(MaxDuration/1E9) +" seconds"
-		Response.Data = nil
+		Response.Data    = _apperrors.DataNil
 		var rep = Repository() 
 	    rep.Delete(key)
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)

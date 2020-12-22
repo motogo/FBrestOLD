@@ -26,6 +26,13 @@ curl -X GET -H "Content-Type: application/json" -d "{\"DATABASE\":\"D:/Data/LAR/
 
 curl -X GET -H "Content-Type: application/json" -d "{\"DATABASE\":\"D:/Data/DokuMents/DOKUMENTS30.FDB\",\"LOCATION\":\"localhost\",\"PORT\":3050}"  localhost:4488/db/test?key={\"LOCATION\":\"localhost\",\"PORT\":3050}
 
+
+
+curl -X GET -H "Content-Type: application/json" -d {\"table\": \"TSTANDORT\",\"fields\": [\"ID\",\"BEZ\",\"GUELTIG\"],\"filter\":\"ID=1 AND BEZ like 'x%'\",\"order\": [\"BEZ ASC\",\"ID DESC\"],\"groupby\": [\"ID\",\"BEZ\"],\"first\": 0} -s http://localhost:4488/-MOBahLQhGLa5l5lXEte/rest/get/TSTANDORT
+{"Status":403,"Message":"No valid database connection found by session token -MOBahLQhGLa5l5lXEte","Data":null}
+
+
+
 =========================================================================================================================================================
 SessionKey holen
 http://localhost:4488/api/getkey?h=Database:D:/Data/DokuMents/DOKUMENTS30.FDB

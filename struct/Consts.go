@@ -8,6 +8,6 @@ const(
 	Info string = "info"
 	Limit string = "limit"
 	FormatJson string = "fjson"
-	FormatText string = "ftext"
+	//FormatText string = "ftext"
 	Payload string = "payload"
 )

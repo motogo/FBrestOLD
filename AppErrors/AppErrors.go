@@ -8,6 +8,10 @@ var ErrPermissionKeyNotFound = errors.New("Permission key not found")
 var ErrUserOrPasswordWrong = errors.New("User or password wrong !!!")
 var ErrPermissionItemNotFound = errors.New("Permission item not found")
 var ErrNoPermission = errors.New("No permission")
+var DataNil = "No data"
+var GotDatas = "Got datas"
+var NoTableGiven = "No table given"
+var NoFieldsGiven = "No fields given"
 
 
  

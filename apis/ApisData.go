@@ -4,6 +4,7 @@ import (
 	"fbrest/FBxRESTBase/config"
 	"fbrest/FBxRESTBase/models"	
 	"strconv"	
+	"strings"
 	_struct "fbrest/FBxRESTBase/struct"
 	_functions "fbrest/FBxRESTBase/functions"
 	_sessions "fbrest/FBxRESTBase/sessions"
@@ -27,15 +28,15 @@ func TestDBOpenClose(response http.ResponseWriter, r *http.Request) {
 	var Response _struct.ResponseData
 		
 	if err != nil {	
-		Response.Status = http.StatusInternalServerError
+		Response.Status  = http.StatusInternalServerError
 		Response.Message = err.Error()
-		Response.Data = kv.Token			
+		Response.Data    = kv.Token			
 		log.WithFields(log.Fields{"Open database, Error": err.Error(),	}).Error("Database not available")
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
-		Response.Status = http.StatusInternalServerError
+		Response.Status  = http.StatusInternalServerError
 		Response.Message = "Database open/close successfully"
-		Response.Data = kv.Token
+		Response.Data    = kv.Token
 		log.Info("Database opend/closed successfully, ping sent")
 			
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
@@ -51,13 +52,14 @@ func TestSQLResponse(response http.ResponseWriter, r *http.Request) {
 	var Response _struct.ResponseData
 	var entitiesData _struct.SQLAttributes
 	
-	_functions.GetSQLParamsFromURL(r , &entitiesData)				
-	_functions.GetParamsFromBODY(r , &entitiesData)	
+	if(! _functions.GetSQLParamsFromURL(r , &entitiesData)) {
+		_functions.GetSQLParamsFromBODY(r , &entitiesData)	
+	}
 	_functions.OutParameters(entitiesData) 	
 	
-	Response.Status = http.StatusOK
+	Response.Status  = http.StatusOK
 	Response.Message = "Test SQL response"
-	Response.Data = entitiesData.Cmd
+	Response.Data    = entitiesData.Cmd
 	_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	
 }
@@ -73,9 +75,9 @@ func TestTABLEResponse(response http.ResponseWriter, r *http.Request) {
 	//_functions.GetParamsFromBODY(r , &entitiesData)	
 	//_functions.OutParameters(entitiesData) 	
 	
-	Response.Status = http.StatusOK
+	Response.Status  = http.StatusOK
 	Response.Message = "Test table response"
-	Response.Data = entitiesData
+	Response.Data    = entitiesData
 	_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 }
 
@@ -90,7 +92,9 @@ func GetSessionKey(response http.ResponseWriter, r *http.Request) {
 	
 	var Response _struct.ResponseData
 		
-	_functions.GetSessionParamsFromURL(r , &dbData)		
+	if(!_functions.GetSessionParamsFromURL(r , &dbData)) {
+		_functions.GetSessionParamsFromBODY(r , &dbData)
+	}
 
 	id := bguuid.New()				
 		
@@ -98,17 +102,17 @@ func GetSessionKey(response http.ResponseWriter, r *http.Request) {
 	var perm,errperm = _permissions.GetPermissionFromRepository(dbData.User,dbData.Password)
 	if(errperm != nil) {
 		Response.Status  = http.StatusNotFound
-		Response.Message = "No permissions !!!"
-		Response.Data    =  errperm.Error()
+		Response.Message = errperm.Error()
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		return
 	}
 	var connstr = string(perm.DBUser+":"+perm.DBPassword+"@"+dbData.Location+":"+strconv.Itoa(dbData.Port)+"/"+dbData.Database)		
 
 	var itm = rep.Add(string(id),perm.Type,connstr)
-	Response.Status = http.StatusOK
-	Response.Message = "Created UUID, permissions:"+strconv.Itoa(int(perm.Type)) +", duration:"+ itm.Duration.String()
-	Response.Data =  string(id)
+	Response.Status  = http.StatusOK
+	Response.Message = "Created token for permission:"+strconv.Itoa(int(perm.Type)) +", duration:"+ itm.Duration.String()
+	Response.Data    =  string(id)
 	_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 	
 }
@@ -122,9 +126,9 @@ func DeleteSessionKey(response http.ResponseWriter, r *http.Request) {
 	var Response _struct.ResponseData								
 	var rep = _sessions.Repository() 
 	rep.Delete(key)
-	Response.Status = http.StatusOK
+	Response.Status  = http.StatusOK
 	Response.Message = "Deleted " + _sessions.SessionTokenStr
-	Response.Data =  key
+	Response.Data    =  key
 	_httpstuff.RestponWithJson(response, http.StatusOK, Response)			
 }
 
@@ -150,17 +154,17 @@ func SetSessionKey(response http.ResponseWriter, r *http.Request) {
 	var cmd string = config.MakeConnectionStringFromStruct(dbData)
 	var perm,errperm = _permissions.GetPermissionFromRepository(dbData.User,dbData.Password )
 	if(errperm != nil) {
-		Response.Status = http.StatusOK
-		Response.Message = "No permission !!!"
-		Response.Data =  errperm
+		Response.Status  = http.StatusOK
+		Response.Message = errperm.Error()
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		return
 	}
 	rep.Add(key,perm.Type,cmd)
 	
-	Response.Status = http.StatusOK
+	Response.Status  = http.StatusOK
 	Response.Message = "Set " + _sessions.SessionTokenStr
-	Response.Data =  key
+	Response.Data    =  key
 	_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 			
 }
@@ -188,28 +192,29 @@ func GetSQLData(response http.ResponseWriter, r *http.Request) {
 	var Response _struct.ResponseData
 	var entitiesData _struct.SQLAttributes
 		
-	_functions.GetSQLParamsFromURL(r , &entitiesData)				
-	_functions.GetParamsFromBODY(r , &entitiesData)	
+	if(! _functions.GetSQLParamsFromURL(r , &entitiesData)) {
+		_functions.GetSQLParamsFromBODY(r , &entitiesData)	
+	}
 	_functions.OutParameters(entitiesData) 	
 	db, err := config.ConnLocationWithSession(kv)	
 	
 	if err != nil {
-		Response.Status = http.StatusInternalServerError
-		Response.Message = entitiesData.Info
-		Response.Data = err.Error()
+		Response.Status  = http.StatusInternalServerError
+		Response.Message = err.Error()
+		Response.Data    = entitiesData.Info
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
 		_models := models.ModelGetData{DB:db}
 		IsiData, err2 := _models.GetSQLData(entitiesData.Cmd)
 		if err2 != nil {
-			Response.Status = http.StatusInternalServerError
-			Response.Message = entitiesData.Info
-			Response.Data = err2.Error()
+			Response.Status  = http.StatusInternalServerError
+			Response.Message = err2.Error()
+			Response.Data    = entitiesData.Info
 			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
-			Response.Status = http.StatusOK
-			Response.Message = entitiesData.Info
-			Response.Data = &IsiData
+			Response.Status  = http.StatusOK
+			Response.Message = "Got datas"
+			Response.Data    = &IsiData
 			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		}
 	}
@@ -242,14 +247,15 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 	entitiesData.Table = table
 	
 
-	_functions.GetTableParamsFromURL(r , &entitiesData)		
-	_functions.GetTableParamsFromBODY(r , &entitiesData)	
+	if(! _functions.GetTableParamsFromURL(r , &entitiesData)		) {
+		_functions.GetTableParamsFromBODY(r , &entitiesData)	
+	}
 	_functions.OutTableParameters(entitiesData) 	
 	
 	if(len(entitiesData.Table) < 1) {
-		Response.Status = http.StatusInternalServerError
-		Response.Message = entitiesData.Info
-		Response.Data = "No Table given"
+		Response.Status  = http.StatusInternalServerError
+		Response.Message = "No Table given"
+		Response.Data    = entitiesData.Info
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -257,9 +263,9 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 	db, err := config.ConnLocationWithSession(kv)
 	
 	if err != nil {
-		Response.Status = http.StatusInternalServerError
+		Response.Status  = http.StatusInternalServerError
 		Response.Message = err.Error()
-		Response.Data = nil
+		Response.Data    = entitiesData.Info
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
 		_models := models.ModelGetData{DB:db}
@@ -267,20 +273,105 @@ func GetTableData(response http.ResponseWriter, r *http.Request) {
 		
 		IsiData, err2 := _models.GetSQLData(cmd)
 		if err2 != nil {
-			Response.Status = http.StatusInternalServerError
-			Response.Message = entitiesData.Info
-			Response.Data = err2.Error()
+			Response.Status  = http.StatusInternalServerError
+			Response.Message = err2.Error()
+			Response.Data    = entitiesData.Info
 			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
-			Response.Status = http.StatusOK
-			Response.Message = entitiesData.Info
-			Response.Data = &IsiData
+			Response.Status  = http.StatusOK
+			Response.Message = "Got datas"
+			Response.Data    = &IsiData
 			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		}
 	}
 }
 
+func GetTableFieldData(response http.ResponseWriter, r *http.Request) {
+
+
+	log.WithFields(log.Fields{"URL": r.URL,	}).Debug("func GetTableData")
+	
+	var key = _functions.GetLeftPathSliceFromURL(r,0)
+	var kv  = _sessions.TokenValid(response, key)
+	if(!kv.Valid) {
+		return
+	}
+	var Response _struct.ResponseData
+	if(kv.Permission < _permissions.Read) {
+		Response.Status = http.StatusNotFound
+		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
+		Response.Data = key
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+	
+	var entitiesData _struct.GetTABLEAttributes
+	var fieldvalue = _functions.GetRightPathSliceFromURL(r,0)
+	var field = _functions.GetRightPathSliceFromURL(r,1)
+	var table = _functions.GetRightPathSliceFromURL(r,2)
+	fieldvalue = _httpstuff.UnEscape(fieldvalue)
+	
+	entitiesData.Table = table
+	entitiesData.Fields = field	
+	entitiesData.Filter = _functions.MakeFieldValue(field, fieldvalue)
+
+	if(! _functions.GetFieldParamsFromURL(r , &entitiesData)) {
+		_functions.GetFieldParamsFromBODY(r , &entitiesData)	
+	}
+	_functions.OutTableParameters(entitiesData) 	
+	
+	if(len(entitiesData.Table) < 1) {
+		Response.Status  = http.StatusInternalServerError
+		Response.Message = "No Table given"
+		Response.Data    = entitiesData.Info
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+
+	db, err := config.ConnLocationWithSession(kv)
+	
+	if err != nil {
+		Response.Status  = http.StatusInternalServerError
+		Response.Message = err.Error()
+		Response.Data    = entitiesData.Info
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+	} else {
+		_models := models.ModelGetData{DB:db}
+		var cmd string = _functions.MakeSelectSQL(entitiesData)
+		
+		IsiData, err2 := _models.GetSQLData(cmd)
+		if err2 != nil {
+			Response.Status  = http.StatusInternalServerError
+			Response.Message = err2.Error()
+			Response.Data    = entitiesData.Info
+			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		} else {
+			Response.Status  = http.StatusOK
+			Response.Message = "Got datas"
+			Response.Data    = &IsiData
+			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
+		}
+	}
+}
+
+func IsBrowser(ua string) (bool) {
+	if(strings.Contains(ua, "curl") || strings.Contains(ua, "Postman")) {
+		return false
+	}
+	return true
+}
+
 func UpdateTableDataGET(response http.ResponseWriter, r *http.Request) {
+	var ua = r.Header.Get("User-Agent")
+	if(!IsBrowser(ua)) {
+		var Response _struct.ResponseData	
+		Response.Status  = http.StatusNotFound
+		Response.Message = "GET not allowed, use PUT instead"
+		Response.Data    = _apperrors.DataNil
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
+    log.Info(ua)
 	r.Method = "PUT"
 	UpdateTableData(response,r)
 }
@@ -298,9 +389,9 @@ func UpdateTableData(response http.ResponseWriter, r *http.Request) {
 	}
 	var Response _struct.ResponseData
 	if(kv.Permission < _permissions.Read) {
-		Response.Status = http.StatusNotFound
+		Response.Status  = http.StatusNotFound
 		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
-		Response.Data = key
+		Response.Data    = "Token:"+key
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -310,14 +401,15 @@ func UpdateTableData(response http.ResponseWriter, r *http.Request) {
 	entitiesData.Table = table
 	
 
-	_functions.GetFIELDPayloadFromURL(r , &entitiesData)		
-	//_functions.GetTableParamsFromBODY(r , &entitiesData)	
+	if(! _functions.GetFIELDPayloadFromURL(r , &entitiesData)) {
+	    _functions.GetFIELDPayloadFromBODY(r , &entitiesData)	
+	}
 	//_functions.OutTableParameters(entitiesData) 	
 	
 	if(len(entitiesData.Table) < 1) {
-		Response.Status = http.StatusInternalServerError
+		Response.Status  = http.StatusInternalServerError
 		Response.Message = "Update failure"
-		Response.Data = "No table given"
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -325,9 +417,9 @@ func UpdateTableData(response http.ResponseWriter, r *http.Request) {
 	db, err := config.ConnLocationWithSession(kv)
 	
 	if err != nil {
-		Response.Status = http.StatusInternalServerError
+		Response.Status  = http.StatusInternalServerError
 		Response.Message = err.Error()
-		Response.Data = nil
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
 		_models := models.ModelGetData{DB:db}
@@ -335,14 +427,14 @@ func UpdateTableData(response http.ResponseWriter, r *http.Request) {
 		
 		IsiData, err2 := _models.GetSQLData(cmd)
 		if err2 != nil {
-			Response.Status = http.StatusInternalServerError
-			Response.Message = cmd
-			Response.Data = err2.Error()
+			Response.Status  = http.StatusInternalServerError
+			Response.Message = err2.Error()
+			Response.Data    = cmd
 			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
-			Response.Status = http.StatusOK
-			Response.Message = cmd
-			Response.Data = &IsiData
+			Response.Status  = http.StatusOK
+			Response.Message = "Got datas"
+			Response.Data    = &IsiData
 			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		}
 	}
@@ -350,6 +442,15 @@ func UpdateTableData(response http.ResponseWriter, r *http.Request) {
 
 
 func DeleteTableDataGET(response http.ResponseWriter, r *http.Request) {
+	var ua = r.Header.Get("User-Agent")
+	if(!IsBrowser(ua)) {
+		var Response _struct.ResponseData	
+		Response.Status  = http.StatusNotFound
+		Response.Message = "GET not allowed, use POST instead"
+		Response.Data    = _apperrors.DataNil
+		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
+		return
+	}
 	r.Method = "POST"
 	DeleteTableData(response, r)
 }
@@ -364,9 +465,9 @@ func DeleteTableData(response http.ResponseWriter, r *http.Request) {
 	}
 	var Response _struct.ResponseData
 	if(kv.Permission < _permissions.Read) {
-		Response.Status = http.StatusNotFound
+		Response.Status  = http.StatusNotFound
 		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
-		Response.Data = key
+		Response.Data    = key
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -379,9 +480,9 @@ func DeleteTableData(response http.ResponseWriter, r *http.Request) {
 	//_functions.OutTableParameters(entitiesData) 	
 	
 	if(len(entitiesData.Table) < 1) {
-		Response.Status = http.StatusInternalServerError
-		Response.Message = "" //entitiesData.Info
-		Response.Data = "No table given"
+		Response.Status  = http.StatusInternalServerError
+		Response.Message = _apperrors.NoTableGiven
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -389,9 +490,9 @@ func DeleteTableData(response http.ResponseWriter, r *http.Request) {
 	db, err := config.ConnLocationWithSession(kv)
 	
 	if err != nil {
-		Response.Status = http.StatusInternalServerError
+		Response.Status  = http.StatusInternalServerError
 		Response.Message = err.Error()
-		Response.Data = nil
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
 		_models := models.ModelGetData{DB:db}
@@ -399,14 +500,14 @@ func DeleteTableData(response http.ResponseWriter, r *http.Request) {
 		
 		IsiData, err2 := _models.RunSQLData(cmd)
 		if err2 != nil {
-			Response.Status = http.StatusInternalServerError
-			Response.Message = cmd
-			Response.Data = err2.Error()
+			Response.Status  = http.StatusInternalServerError
+			Response.Message = err2.Error()
+			Response.Data    = cmd
 			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
-			Response.Status = http.StatusOK
-			Response.Message = cmd
-			Response.Data = &IsiData
+			Response.Status  = http.StatusOK
+			Response.Message = _apperrors.GotDatas
+			Response.Data    = &IsiData
 			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		}
 	}
@@ -428,9 +529,9 @@ func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
 	}
 	var Response _struct.ResponseData
 	if(kv.Permission < _permissions.Read) {
-		Response.Status = http.StatusNotFound
+		Response.Status  = http.StatusNotFound
 		Response.Message = _apperrors.ErrNoPermission.Error() + " (read)"
-		Response.Data = key
+		Response.Data    = key
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -444,17 +545,17 @@ func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
 	//_functions.OutTableParameters(entitiesData) 	
 	
 	if(len(entitiesData.Table) < 1) {
-		Response.Status = http.StatusInternalServerError
-		Response.Message = "" //entitiesData.Info
-		Response.Data = "No table given"
+		Response.Status  = http.StatusInternalServerError
+		Response.Message = _apperrors.NoTableGiven
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
 
 	if(len(entitiesData.FieldValue) < 1) {
-		Response.Status = http.StatusInternalServerError
-		Response.Message = "" //entitiesData.Info
-		Response.Data = "No field given"
+		Response.Status  = http.StatusInternalServerError
+		Response.Message = _apperrors.NoFieldsGiven
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		return
 	}
@@ -462,9 +563,9 @@ func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
 	db, err := config.ConnLocationWithSession(kv)
 	
 	if err != nil {
-		Response.Status = http.StatusInternalServerError
+		Response.Status  = http.StatusInternalServerError
 		Response.Message = err.Error()
-		Response.Data = nil
+		Response.Data    = _apperrors.DataNil
 		_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 	} else {
 		_models := models.ModelGetData{DB:db}
@@ -472,14 +573,14 @@ func DeleteTableFieldData(response http.ResponseWriter, r *http.Request) {
 		
 		IsiData, err2 := _models.RunSQLData(cmd)
 		if err2 != nil {
-			Response.Status = http.StatusInternalServerError
-			Response.Message = cmd
-			Response.Data = err2.Error()
+			Response.Status  = http.StatusInternalServerError
+			Response.Message = err2.Error()
+			Response.Data    = _apperrors.DataNil
 			_httpstuff.RestponWithJson(response, http.StatusInternalServerError, Response)
 		} else {
-			Response.Status = http.StatusOK
-			Response.Message = cmd
-			Response.Data = &IsiData
+			Response.Status  = http.StatusOK
+			Response.Message = _apperrors.GotDatas
+			Response.Data    = &IsiData
 			_httpstuff.RestponWithJson(response, http.StatusOK, Response)
 		}
 	}
